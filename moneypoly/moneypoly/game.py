@@ -17,6 +17,126 @@ from moneypoly.dice import Dice
 from moneypoly.cards import CardDeck, CHANCE_CARDS, COMMUNITY_CHEST_CARDS
 from moneypoly import ui
 
+class InteractiveMenu:
+    """Class to offer the functions of interactive menu"""
+    def __init__(self, game):
+        # Store a reference to the main game object
+        self.game = game
+    def interactive_menu(self):
+        """
+        Offer the current player a pre-roll action menu (mortgage, trade, etc.).
+        Returns when the player chooses to roll.
+        """
+        while True:
+            print("\n  Pre-roll options:")
+            print("    1. View standings")
+            print("    2. View board ownership")
+            print("    3. Mortgage a property")
+            print("    4. Unmortgage a property")
+            print("    5. Trade with another player")
+            print("    6. Request emergency loan")
+            print("    0. Roll dice")
+            choice = ui.safe_int_input("  Choice: ", default=0)
+
+            if choice == 0:
+                break
+            if choice == 1:
+                ui.print_standings(self.game.players)
+            elif choice == 2:
+                ui.print_board_ownership(self.game.board)
+            elif choice == 3:
+                self._menu_mortgage(self.game.players[self.game.current_index])
+            elif choice == 4:
+                self._menu_unmortgage(self.game.players[self.game.current_index])
+            elif choice == 5:
+                self._menu_trade(self.game.players[self.game.current_index])
+            elif choice == 6:
+                amount = ui.safe_int_input("  Loan amount: ", default=0)
+                if amount > 0:
+                    self.game.bank.give_loan(self.game.players[self.game.current_index], amount)
+
+    def mortgage_property(self, player, prop):
+        """Mortgage `prop` owned by `player` and credit them the payout."""
+        if prop.owner != player:
+            print(f"  {player.name} does not own {prop.name}.")
+            return False
+        payout = prop.mortgage()
+        if payout == 0:
+            print(f"  {prop.name} is already mortgaged.")
+            return False
+        player.add_money(payout)
+        self.game.bank.collect(-payout)
+        print(f"  {player.name} mortgaged {prop.name} and received ${payout}.")
+        return True
+
+    def unmortgage_property(self, player, prop):
+        """Lift the mortgage on `prop`, charging the player the redemption cost."""
+        if prop.owner != player:
+            print(f"  {player.name} does not own {prop.name}.")
+            return False
+        cost = prop.unmortgage()
+        if cost == 0:
+            print(f"  {prop.name} is not mortgaged.")
+            return False
+        if player.balance < cost:
+            print(f"  {player.name} cannot afford to unmortgage {prop.name} (${cost}).")
+            return False
+        player.deduct_money(cost)
+        self.game.bank.collect(cost)
+        print(f"  {player.name} unmortgaged {prop.name} for ${cost}.")
+        return True
+
+    def _menu_mortgage(self, player):
+        """Interactively select a property to mortgage."""
+        mortgageable = [p for p in player.properties if not p.is_mortgaged]
+        if not mortgageable:
+            print("  No properties available to mortgage.")
+            return
+        for i, prop in enumerate(mortgageable):
+            print(f"  {i + 1}. {prop.name}  (value: ${prop.mortgage_value})")
+        idx = ui.safe_int_input("  Select: ", default=0) - 1
+        if 0 <= idx < len(mortgageable):
+            self.mortgage_property(player, mortgageable[idx])
+
+    def _menu_unmortgage(self, player):
+        """Interactively select a mortgaged property to redeem."""
+        mortgaged = [p for p in player.properties if p.is_mortgaged]
+        if not mortgaged:
+            print("  No mortgaged properties to redeem.")
+            return
+        for i, prop in enumerate(mortgaged):
+            cost = int(prop.mortgage_value * 1.1)
+            print(f"  {i + 1}. {prop.name}  (cost to redeem: ${cost})")
+        idx = ui.safe_int_input("  Select: ", default=0) - 1
+        if 0 <= idx < len(mortgaged):
+            self.unmortgage_property(player, mortgaged[idx])
+
+    def _menu_trade(self, player):
+        """Interactively set up a trade between the current player and another."""
+        others = [p for p in self.game.players if p != player]
+        if not others:
+            print("  No other players to trade with.")
+            return
+        for i, p in enumerate(others):
+            print(f"  {i + 1}. {p.name}  (${p.balance})")
+        idx = ui.safe_int_input("  Trade with: ", default=0) - 1
+        if not 0 <= idx < len(others):
+            return
+        partner = others[idx]
+        if not player.properties:
+            print(f"  {player.name} has no properties to trade.")
+            return
+        for i, prop in enumerate(player.properties):
+            print(f"  {i + 1}. {prop.name}")
+        pidx = ui.safe_int_input("  Property to offer: ", default=0) - 1
+        if not 0 <= pidx < len(player.properties):
+            return
+        chosen_prop = player.properties[pidx]
+        cash = ui.safe_int_input(
+            f"  Cash to receive from {partner.name}: $", default=0
+        )
+        self.game.trade(player, partner, chosen_prop, cash)
+
 
 class Game:
     """Manages the full state and flow of a MoneyPoly game session."""
@@ -31,6 +151,7 @@ class Game:
         self.running = True
         self.chance_deck = CardDeck(CHANCE_CARDS)
         self.community_deck = CardDeck(COMMUNITY_CHEST_CARDS)
+        self.menu = InteractiveMenu(self)
 
     def current_player(self):
         """Return the Player whose turn it currently is."""
@@ -162,36 +283,6 @@ class Game:
         player.deduct_money(rent)
         print(f"  {player.name} paid ${rent} rent on {prop.name} to {prop.owner.name}.")
 
-    def mortgage_property(self, player, prop):
-        """Mortgage `prop` owned by `player` and credit them the payout."""
-        if prop.owner != player:
-            print(f"  {player.name} does not own {prop.name}.")
-            return False
-        payout = prop.mortgage()
-        if payout == 0:
-            print(f"  {prop.name} is already mortgaged.")
-            return False
-        player.add_money(payout)
-        self.bank.collect(-payout)
-        print(f"  {player.name} mortgaged {prop.name} and received ${payout}.")
-        return True
-
-    def unmortgage_property(self, player, prop):
-        """Lift the mortgage on `prop`, charging the player the redemption cost."""
-        if prop.owner != player:
-            print(f"  {player.name} does not own {prop.name}.")
-            return False
-        cost = prop.unmortgage()
-        if cost == 0:
-            print(f"  {prop.name} is not mortgaged.")
-            return False
-        if player.balance < cost:
-            print(f"  {player.name} cannot afford to unmortgage {prop.name} (${cost}).")
-            return False
-        player.deduct_money(cost)
-        self.bank.collect(cost)
-        print(f"  {player.name} unmortgaged {prop.name} for ${cost}.")
-        return True
 
     def trade(self, seller, buyer, prop, cash_amount):
         """
@@ -382,87 +473,3 @@ class Game:
             print(f"\n  {winner.name} wins with a net worth of ${winner.net_worth()}!\n")
         else:
             print("\n  The game ended with no players remaining.")
-
-    def interactive_menu(self, player):
-        """
-        Offer the current player a pre-roll action menu (mortgage, trade, etc.).
-        Returns when the player chooses to roll.
-        """
-        while True:
-            print("\n  Pre-roll options:")
-            print("    1. View standings")
-            print("    2. View board ownership")
-            print("    3. Mortgage a property")
-            print("    4. Unmortgage a property")
-            print("    5. Trade with another player")
-            print("    6. Request emergency loan")
-            print("    0. Roll dice")
-            choice = ui.safe_int_input("  Choice: ", default=0)
-
-            if choice == 0:
-                break
-            elif choice == 1:
-                ui.print_standings(self.players)
-            elif choice == 2:
-                ui.print_board_ownership(self.board)
-            elif choice == 3:
-                self._menu_mortgage(player)
-            elif choice == 4:
-                self._menu_unmortgage(player)
-            elif choice == 5:
-                self._menu_trade(player)
-            elif choice == 6:
-                amount = ui.safe_int_input("  Loan amount: ", default=0)
-                if amount > 0:
-                    self.bank.give_loan(player, amount)
-
-    def _menu_mortgage(self, player):
-        """Interactively select a property to mortgage."""
-        mortgageable = [p for p in player.properties if not p.is_mortgaged]
-        if not mortgageable:
-            print("  No properties available to mortgage.")
-            return
-        for i, prop in enumerate(mortgageable):
-            print(f"  {i + 1}. {prop.name}  (value: ${prop.mortgage_value})")
-        idx = ui.safe_int_input("  Select: ", default=0) - 1
-        if 0 <= idx < len(mortgageable):
-            self.mortgage_property(player, mortgageable[idx])
-
-    def _menu_unmortgage(self, player):
-        """Interactively select a mortgaged property to redeem."""
-        mortgaged = [p for p in player.properties if p.is_mortgaged]
-        if not mortgaged:
-            print("  No mortgaged properties to redeem.")
-            return
-        for i, prop in enumerate(mortgaged):
-            cost = int(prop.mortgage_value * 1.1)
-            print(f"  {i + 1}. {prop.name}  (cost to redeem: ${cost})")
-        idx = ui.safe_int_input("  Select: ", default=0) - 1
-        if 0 <= idx < len(mortgaged):
-            self.unmortgage_property(player, mortgaged[idx])
-
-    def _menu_trade(self, player):
-        """Interactively set up a trade between the current player and another."""
-        others = [p for p in self.players if p != player]
-        if not others:
-            print("  No other players to trade with.")
-            return
-        for i, p in enumerate(others):
-            print(f"  {i + 1}. {p.name}  (${p.balance})")
-        idx = ui.safe_int_input("  Trade with: ", default=0) - 1
-        if not 0 <= idx < len(others):
-            return
-        partner = others[idx]
-        if not player.properties:
-            print(f"  {player.name} has no properties to trade.")
-            return
-        for i, prop in enumerate(player.properties):
-            print(f"  {i + 1}. {prop.name}")
-        pidx = ui.safe_int_input("  Property to offer: ", default=0) - 1
-        if not 0 <= pidx < len(player.properties):
-            return
-        chosen_prop = player.properties[pidx]
-        cash = ui.safe_int_input(
-            f"  Cash to receive from {partner.name}: $", default=0
-        )
-        self.trade(player, partner, chosen_prop, cash)
