@@ -1,3 +1,4 @@
+"""Module for all user interface functions in Moneypoly, including printing player status, standings, and board ownership."""
 def print_banner(title):
     """Print a decorated section header."""
     width = 52

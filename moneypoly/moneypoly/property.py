@@ -1,3 +1,4 @@
+"""Module for representing the Monopoly board, its properties, and special tiles."""
 class Property:
     """Represents a single purchasable property tile on the MoneyPoly board."""
 

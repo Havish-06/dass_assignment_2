@@ -1,3 +1,4 @@
+"""Module for representing the bank in MoneyPoly, which manages funds, loans, and financial transactions."""
 import math
 from moneypoly.config import BANK_STARTING_FUNDS
 

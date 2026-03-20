@@ -1,3 +1,4 @@
+"""Module for simulating dice rolls in MoneyPoly, including tracking consecutive doubles."""
 import random
 from moneypoly.config import BOARD_SIZE
 
