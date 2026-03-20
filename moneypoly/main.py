@@ -1,3 +1,6 @@
+"""
+Moneypoly: A command-line Monopoly game in Python.
+"""
 from moneypoly.game import Game
 
 
