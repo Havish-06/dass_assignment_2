@@ -13,6 +13,7 @@ def get_player_names():
 
 
 def main():
+    """Main entry point for the Moneypoly game."""
     names = get_player_names()
     try:
         game = Game(names)
