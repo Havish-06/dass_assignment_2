@@ -96,7 +96,6 @@ class Game:
 
         elif tile == "free_parking":
             print(f"  {player.name} rests on Free Parking. Nothing happens.")
-            self._apply_card(player, card) #error here
 
         elif tile == "chance":
             card = self.chance_deck.draw()
