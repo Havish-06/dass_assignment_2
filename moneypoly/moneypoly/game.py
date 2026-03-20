@@ -1,3 +1,5 @@
+"""Game engine for the Monopoly implementation.
+Handles gameplay flow, trading, turns, and board interaction."""
 import os
 
 from moneypoly.config import (
