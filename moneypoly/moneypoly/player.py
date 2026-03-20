@@ -1,6 +1,6 @@
-"""Module for representing players in a MoneyPoly game, 
+"""Module for representing players in a MoneyPoly game,
 including their balance, position, properties, and status."""
-from config import STARTING_BALANCE, BOARD_SIZE, GO_SALARY, JAIL_POSITION
+from moneypoly.config import STARTING_BALANCE, BOARD_SIZE, GO_SALARY, JAIL_POSITION
 
 
 class Player:

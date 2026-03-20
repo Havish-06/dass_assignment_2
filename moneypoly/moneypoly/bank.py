@@ -1,6 +1,6 @@
 """Module for representing the bank in MoneyPoly, 
 which manages funds, loans, and financial transactions."""
-from config import BANK_STARTING_FUNDS
+from moneypoly.config import BANK_STARTING_FUNDS
 
 
 class Bank:
