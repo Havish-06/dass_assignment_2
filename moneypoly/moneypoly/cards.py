@@ -1,3 +1,5 @@
+"""Module for Chance and Community Chest cards in Moneypoly."""
+
 import random
 
 CHANCE_CARDS = [
