@@ -87,8 +87,7 @@ class Game:
             self.bank.collect(INCOME_TAX_AMOUNT)
             print(f"  {player.name} paid income tax: ${INCOME_TAX_AMOUNT}.")
 
-        elif tile == "luxury_tax": #if balance < income tax, player goes bankrupt and is eliminated, 
-            #so no need to check for that here . the code isnt there to handle it but it should be fine since the bankruptcy check happens at the end of the turn
+        elif tile == "luxury_tax":
             player.deduct_money(LUXURY_TAX_AMOUNT)
             self.bank.collect(LUXURY_TAX_AMOUNT)
             print(f"  {player.name} paid luxury tax: ${LUXURY_TAX_AMOUNT}.")
@@ -335,8 +334,6 @@ class Game:
                 if other != player and other.balance >= value:
                     other.deduct_money(value)
                     player.add_money(value)
-#difference between collect_from_all and birthday is that in collect_from_all, the player receives money from all other players, whereas in birthday, the player receives money from all other players but only if they have enough balance to pay. In collect_from_all, the player receives money regardless of the other players' balances.
-#both look the same and need to be changed right?
         elif action == "collect_from_all":
             for other in self.players:
                 if other != player and other.balance >= value:
@@ -453,7 +450,7 @@ class Game:
         for i, p in enumerate(others):
             print(f"  {i + 1}. {p.name}  (${p.balance})")
         idx = ui.safe_int_input("  Trade with: ", default=0) - 1
-        if not (0 <= idx < len(others)):
+        if not 0 <= idx < len(others):
             return
         partner = others[idx]
         if not player.properties:
@@ -462,7 +459,7 @@ class Game:
         for i, prop in enumerate(player.properties):
             print(f"  {i + 1}. {prop.name}")
         pidx = ui.safe_int_input("  Property to offer: ", default=0) - 1
-        if not (0 <= pidx < len(player.properties)):
+        if not 0 <= pidx < len(player.properties):
             return
         chosen_prop = player.properties[pidx]
         cash = ui.safe_int_input(
