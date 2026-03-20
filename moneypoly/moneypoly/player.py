@@ -1,5 +1,5 @@
-"""Module for representing players in a MoneyPoly game, including their balance, position, properties, and status."""
-import sys
+"""Module for representing players in a MoneyPoly game, 
+including their balance, position, properties, and status."""
 from config import STARTING_BALANCE, BOARD_SIZE, GO_SALARY, JAIL_POSITION
 
 
