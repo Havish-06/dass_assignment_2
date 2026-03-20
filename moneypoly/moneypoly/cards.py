@@ -83,6 +83,7 @@ class CardDeck:
     """Represents an ordered deck of Chance or Community Chest cards."""
 
     def __init__(self, cards):
+        """Initialize the deck with a list of card dicts."""
         self.cards = list(cards)
         self.index = 0
 
