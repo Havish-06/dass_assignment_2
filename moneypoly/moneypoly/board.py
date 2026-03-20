@@ -1,6 +1,6 @@
 """Module for representing the Monopoly board, its properties, and special tiles."""
-from moneypoly.property import Property, PropertyGroup
-from moneypoly.config import (
+from property import Property, PropertyGroup
+from config import (
     JAIL_POSITION,
     GO_TO_JAIL_POSITION,
     FREE_PARKING_POSITION,

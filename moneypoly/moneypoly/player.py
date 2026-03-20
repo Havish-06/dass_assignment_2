@@ -1,6 +1,6 @@
 """Module for representing players in a MoneyPoly game, including their balance, position, properties, and status."""
 import sys
-from moneypoly.config import STARTING_BALANCE, BOARD_SIZE, GO_SALARY, JAIL_POSITION
+from config import STARTING_BALANCE, BOARD_SIZE, GO_SALARY, JAIL_POSITION
 
 
 class Player:
@@ -43,7 +43,7 @@ class Player:
         Awards the Go salary if the player passes or lands on Go.
         Returns the new board position.
         """
-        old_position = self.position
+        # old_position = self.position
         self.position = (self.position + steps) % BOARD_SIZE
 
         if self.position == 0:
