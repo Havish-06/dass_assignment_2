@@ -1,23 +1,49 @@
 """Module for representing the Monopoly board, its properties, and special tiles."""
-class Property:
-    """Represents a single purchasable property tile on the MoneyPoly board."""
 
-    FULL_GROUP_MULTIPLIER = 2
 
-    def __init__(self, name, position, price, base_rent, group=None):
+class PropertySpec:
+    """Immutable configuration for a board property (name, price, etc.)."""
+
+    def __init__(self, name, position, price, base_rent):
         self.name = name
         self.position = position
         self.price = price
         self.base_rent = base_rent
         self.mortgage_value = price // 2
+        self.group = None
+
+    def as_tuple(self):
+        """Return a tuple view of the core spec fields."""
+        return (
+            self.name,
+            self.position,
+            self.price,
+            self.base_rent,
+            self.mortgage_value,
+            self.group,
+        )
+
+    def with_group(self, group):
+        """Return a new spec with the same fields but a different group."""
+        new_spec = PropertySpec(self.name, self.position, self.price, self.base_rent)
+        new_spec.group = group
+        return new_spec
+
+
+class Property:
+    """Represents a single purchasable property tile on the MoneyPoly board."""
+
+    FULL_GROUP_MULTIPLIER = 2
+
+    def __init__(self, spec):
+        self._spec = spec
         self.owner = None
         self.is_mortgaged = False
         self.houses = 0
 
         # Register with the group immediately on creation
-        self.group = group
-        if group is not None and self not in group.properties:
-            group.properties.append(self)
+        if self._spec.group is not None and self not in self._spec.group.properties:
+            self._spec.group.properties.append(self)
 
     def get_rent(self):
         """
@@ -59,6 +85,38 @@ class Property:
     def __repr__(self):
         owner_name = self.owner.name if self.owner else "unowned"
         return f"Property({self.name!r}, pos={self.position}, owner={owner_name!r})"
+
+    # Expose spec fields via read-only properties so existing callers continue to work.
+
+    @property
+    def name(self):
+        """Return the name of this property."""
+        return self._spec.name
+
+    @property
+    def position(self):
+        """Return the board position of this property."""
+        return self._spec.position
+
+    @property
+    def price(self):
+        """Return the purchase price of this property."""
+        return self._spec.price
+
+    @property
+    def base_rent(self):
+        """Return the base rent for this property, ignoring any group ownership bonuses."""
+        return self._spec.base_rent
+
+    @property
+    def mortgage_value(self):
+        """Return the amount this property would yield if mortgaged."""
+        return self._spec.mortgage_value
+
+    @property
+    def group(self):
+        """Return the PropertyGroup this property belongs to, or None if it has none."""
+        return self._spec.group
 
 
 class PropertyGroup:

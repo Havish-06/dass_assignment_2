@@ -1,5 +1,5 @@
 """Module for representing the Monopoly board, its properties, and special tiles."""
-from moneypoly.property import Property, PropertyGroup
+from moneypoly.property import Property, PropertyGroup, PropertySpec
 from moneypoly.config import (
     JAIL_POSITION,
     GO_TO_JAIL_POSITION,
@@ -53,29 +53,34 @@ class Board:
     def _create_properties(self):
         """Instantiate every purchasable property and return as a list."""
         g = self.groups
+        def make(name, position, price, base_rent, group):
+            spec = PropertySpec(name, position, price, base_rent)
+            spec.group = group
+            return Property(spec)
+
         return [
-            Property("Mediterranean Avenue",   1,  60,  2,  g["brown"]),
-            Property("Baltic Avenue",          3,  60,  4,  g["brown"]),
-            Property("Oriental Avenue",        6,  100, 6,  g["light_blue"]),
-            Property("Vermont Avenue",         8,  100, 6,  g["light_blue"]),
-            Property("Connecticut Avenue",     9,  120, 8,  g["light_blue"]),
-            Property("St. Charles Place",      11, 140, 10, g["pink"]),
-            Property("States Avenue",          13, 140, 10, g["pink"]),
-            Property("Virginia Avenue",        14, 160, 12, g["pink"]),
-            Property("St. James Place",        16, 180, 14, g["orange"]),
-            Property("Tennessee Avenue",       18, 180, 14, g["orange"]),
-            Property("New York Avenue",        19, 200, 16, g["orange"]),
-            Property("Kentucky Avenue",        21, 220, 18, g["red"]),
-            Property("Indiana Avenue",         23, 220, 18, g["red"]),
-            Property("Illinois Avenue",        24, 240, 20, g["red"]),
-            Property("Atlantic Avenue",        26, 260, 22, g["yellow"]),
-            Property("Ventnor Avenue",         27, 260, 22, g["yellow"]),
-            Property("Marvin Gardens",         29, 280, 24, g["yellow"]),
-            Property("Pacific Avenue",         31, 300, 26, g["green"]),
-            Property("North Carolina Avenue",  32, 300, 26, g["green"]),
-            Property("Pennsylvania Avenue",    34, 320, 28, g["green"]),
-            Property("Park Place",             37, 350, 35, g["dark_blue"]),
-            Property("Boardwalk",              39, 400, 50, g["dark_blue"]),
+            make("Mediterranean Avenue",   1,  60,  2,  g["brown"]),
+            make("Baltic Avenue",          3,  60,  4,  g["brown"]),
+            make("Oriental Avenue",        6,  100, 6,  g["light_blue"]),
+            make("Vermont Avenue",         8,  100, 6,  g["light_blue"]),
+            make("Connecticut Avenue",     9,  120, 8,  g["light_blue"]),
+            make("St. Charles Place",      11, 140, 10, g["pink"]),
+            make("States Avenue",          13, 140, 10, g["pink"]),
+            make("Virginia Avenue",        14, 160, 12, g["pink"]),
+            make("St. James Place",        16, 180, 14, g["orange"]),
+            make("Tennessee Avenue",       18, 180, 14, g["orange"]),
+            make("New York Avenue",        19, 200, 16, g["orange"]),
+            make("Kentucky Avenue",        21, 220, 18, g["red"]),
+            make("Indiana Avenue",         23, 220, 18, g["red"]),
+            make("Illinois Avenue",        24, 240, 20, g["red"]),
+            make("Atlantic Avenue",        26, 260, 22, g["yellow"]),
+            make("Ventnor Avenue",         27, 260, 22, g["yellow"]),
+            make("Marvin Gardens",         29, 280, 24, g["yellow"]),
+            make("Pacific Avenue",         31, 300, 26, g["green"]),
+            make("North Carolina Avenue",  32, 300, 26, g["green"]),
+            make("Pennsylvania Avenue",    34, 320, 28, g["green"]),
+            make("Park Place",             37, 350, 35, g["dark_blue"]),
+            make("Boardwalk",              39, 400, 50, g["dark_blue"]),
         ]
 
     def get_property_at(self, position):
