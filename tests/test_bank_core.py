@@ -46,6 +46,53 @@ class BankCoreTests(unittest.TestCase):
         self.bank.give_loan(type("P", (), {"name": "X", "add_money": lambda self, amt: None})(), 0)
         self.assertEqual(self.bank.get_balance(), start_funds)
 
+    def test_give_loan_positive_records_and_reduces_funds(self):
+        """Positive loans should reduce bank funds and be tracked in summaries."""
+        class DummyPlayer:
+            def __init__(self):
+                self.name = "Y"
+                self.balance = 0
+
+            def add_money(self, amount):
+                self.balance += amount
+
+        borrower = DummyPlayer()
+        start_funds = self.bank.get_balance()
+        self.bank.give_loan(borrower, 100)
+
+        self.assertEqual(borrower.balance, 100)
+        # Docstring says the bank's funds are reduced accordingly.
+        self.assertEqual(self.bank.get_balance(), start_funds - 100)
+        self.assertEqual(self.bank.loan_count(), 1)
+        self.assertEqual(self.bank.total_loans_issued(), 100)
+
+    def test_give_loan_positive_amount_records_and_summarises(self):
+        """Positive loans reduce bank funds, record loans, and appear in summary helpers."""
+
+        class DummyPlayer:
+            def __init__(self):
+                self.name = "Borrower"
+                self.received = 0
+
+            def add_money(self, amount):
+                self.received += amount
+
+        player = DummyPlayer()
+        start_funds = self.bank.get_balance()
+        self.bank.give_loan(player, 100)
+
+        # Bank funds reduced, player credited.
+        self.assertEqual(player.received, 100)
+        self.assertEqual(self.bank.get_balance(), start_funds - 100)
+
+        # Loan helpers reflect the issued loan.
+        self.assertEqual(self.bank.loan_count(), 1)
+        self.assertEqual(self.bank.total_loans_issued(), 100)
+
+        # summary() and __repr__ should be callable without error.
+        _ = repr(self.bank)
+        self.bank.summary()
+
 
 if __name__ == "__main__":
     unittest.main()

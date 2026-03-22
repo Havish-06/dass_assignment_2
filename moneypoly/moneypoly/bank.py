@@ -48,6 +48,7 @@ class Bank:
             return
         player.add_money(amount)
         self._loans_issued.append((player.name, amount))
+        self._funds -= amount
         print(f"  Bank issued a ${amount} emergency loan to {player.name}.")
 
     def total_loans_issued(self):
