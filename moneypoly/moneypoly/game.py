@@ -450,7 +450,13 @@ class Game:
 
         # Offer to pay the fine voluntarily
         if ui.confirm(f"  Pay ${JAIL_FINE} fine to leave jail? (y/n): "):
+            player.deduct_money(JAIL_FINE)
             self.bank.collect(JAIL_FINE)
+            # Paying the fine can itself cause bankruptcy; eliminate the
+            # player immediately rather than letting them move.
+            self.check_bankruptcy(player)
+            if player not in self.players:
+                return
             player.jail.release()
             print(f"  {player.name} paid the ${JAIL_FINE} fine and is released.")
             roll = self.dice.roll()
@@ -466,6 +472,9 @@ class Game:
             print(f"  {player.name} must leave jail. Paying mandatory ${JAIL_FINE} fine.")
             player.deduct_money(JAIL_FINE)
             self.bank.collect(JAIL_FINE)
+            self.check_bankruptcy(player)
+            if player not in self.players:
+                return
             player.jail.release()
             roll = self.dice.roll()
             print(f"  {player.name} rolled: {self.dice.describe()}")
