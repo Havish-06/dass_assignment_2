@@ -62,18 +62,20 @@ def _card_move_to(game, player, value):
 
 def _card_birthday(game, player, value):
     """Collect a fixed amount from every other player with enough cash."""
-    for other in game.players:
+    for other in list(game.players):
         if other != player and other.balance >= value:
             other.deduct_money(value)
             player.add_money(value)
+            game.check_bankruptcy(other)
 
 
 def _card_collect_from_all(game, player, value):
     """Collect a fixed amount from all other solvent players."""
-    for other in game.players:
+    for other in list(game.players):
         if other != player and other.balance >= value:
             other.deduct_money(value)
             player.add_money(value)
+            game.check_bankruptcy(other)
 
 
 _ACTION_HANDLERS = {
@@ -470,6 +472,14 @@ class Game:
                 self.players.remove(player)
             if self.current_index >= len(self.players):
                 self.current_index = 0
+
+    def check_bankruptcy(self, player):
+        """Public wrapper to check and eliminate a player if bankrupt.
+
+        This is used from helper functions such as card actions to avoid
+        accessing the internal implementation detail directly.
+        """
+        self._check_bankruptcy(player)
 
     def find_winner(self):
         """Return the player with the highest net worth."""
