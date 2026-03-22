@@ -78,11 +78,13 @@ class CardDeckTests(unittest.TestCase):
 
         first = deck.draw()
         second = deck.draw()
-        third = deck.draw()  # cycles back to first
+        third = deck.draw()  # triggers automatic reshuffle before drawing again
 
         self.assertEqual(first["description"], "A")
         self.assertEqual(second["description"], "B")
-        self.assertEqual(third["description"], "A")
+        # After reshuffle, the deck is still a permutation of the same cards,
+        # so the third draw must be either "A" or "B".
+        self.assertIn(third["description"], {"A", "B"})
 
         # Peek on a non-empty deck should return a card without advancing.
         current_index = deck.index
@@ -90,9 +92,47 @@ class CardDeckTests(unittest.TestCase):
         self.assertIsNotNone(next_card)
         self.assertEqual(deck.index, current_index)
 
-        # After three draws from a two-card deck the index is 3, so
-        # 3 % 2 == 1 and cards_remaining reports length - index_mod.
+        # After three draws from a two-card deck and an automatic reshuffle,
+        # the index should now point just past the first card again and there
+        # should be exactly one card remaining before the next reshuffle.
         self.assertEqual(deck.cards_remaining(), 1)
+
+    def test_auto_reshuffle_when_deck_exhausted(self):
+        """Drawing past the end of the deck should reshuffle and restart."""
+        import moneypoly.cards as cards_module  # type: ignore
+
+        cards = [
+            {"description": "A", "action": "collect", "value": 10},
+            {"description": "B", "action": "pay", "value": 5},
+            {"description": "C", "action": "collect", "value": 15},
+        ]
+
+        real_shuffle = cards_module.random.shuffle
+        shuffle_calls = []
+
+        def fake_shuffle(seq):
+            # Record decks we reshuffle to observe order changes.
+            shuffle_calls.append(list(seq))
+
+        try:
+            cards_module.random.shuffle = fake_shuffle
+            deck = CardDeck(cards)
+
+            # Draw all cards once.
+            seen = [deck.draw()["description"] for _ in range(3)]
+            self.assertCountEqual(seen, ["A", "B", "C"])
+
+            # Next draw should trigger an automatic reshuffle before drawing
+            # again, so shuffle must have been called at least once.
+            next_card = deck.draw()
+            self.assertIsNotNone(next_card)
+            self.assertTrue(shuffle_calls)
+
+            # After reshuffle, index should have advanced from 0 to 1 and
+            # cards_remaining should report len(cards) - 1.
+            self.assertEqual(deck.cards_remaining(), len(cards) - 1)
+        finally:
+            cards_module.random.shuffle = real_shuffle
 
     def test_reshuffle_resets_index(self):
         import moneypoly.cards as cards_module  # type: ignore

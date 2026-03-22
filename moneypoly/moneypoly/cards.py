@@ -91,12 +91,19 @@ class CardDeck:
 
     def draw(self):
         """
-        Draw the next card from the deck, cycling back to the start
-        when the deck is exhausted. Returns the card dict.
+        Draw the next card from the deck.
+
+        When the deck has been completely used once (i.e. when the draw
+        index reaches the deck size), the deck is automatically reshuffled
+        and drawing restarts from the beginning of the newly shuffled order.
+        Returns the card dict, or None if the deck is empty.
         """
         if not self.cards:
             return None
-        card = self.cards[self.index % len(self.cards)]
+        # If we've just exhausted the deck, reshuffle and restart.
+        if self.index >= len(self.cards):
+            self.reshuffle()
+        card = self.cards[self.index]
         self.index += 1
         return card
 
