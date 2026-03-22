@@ -5,13 +5,12 @@ from unittest import mock
 
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
-PACKAGE_ROOT = os.path.join(PROJECT_ROOT, "moneypoly")
-if PACKAGE_ROOT not in sys.path:
-    sys.path.insert(0, PACKAGE_ROOT)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from moneypoly.game import Game, apply_card
 import moneypoly.ui as ui_module
-import moneypoly.main as main_module
+import main as main_module
 from moneypoly.board import Board
 from moneypoly.player import Player
 
@@ -112,14 +111,14 @@ class GameMenuAndAuctionTests(unittest.TestCase):
         # _menu_mortgage: first index 1 selects the only mortgageable property.
         calls = []
 
-        def fake_safe_int_input(_prompt, default=0):  # pylint: disable=unused-argument
+        def fake_safe_int_input(_prompt, default=0):  
             return 1
 
         ui_module.safe_int_input = fake_safe_int_input
 
         original_mortgage_property = self.game.mortgage_property
 
-        def spy_mortgage(player, chosen):  # pylint: disable=unused-argument
+        def spy_mortgage(player, chosen):  
             calls.append("mortgage")
             return original_mortgage_property(player, chosen)
 
@@ -133,7 +132,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         original_unmortgage = self.game.unmortgage_property
 
-        def spy_unmortgage(player, chosen):  # pylint: disable=unused-argument
+        def spy_unmortgage(player, chosen):  
             calls.append("unmortgage")
             return original_unmortgage(player, chosen)
 
@@ -147,7 +146,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         sequence = [1, 1, 100]  # choose partner #1, property #1, $100 cash
 
-        def trade_safe_int(_prompt, default=0):  # pylint: disable=unused-argument
+        def trade_safe_int(_prompt, default=0):  
             return sequence.pop(0)
 
         ui_module.safe_int_input = trade_safe_int
@@ -161,6 +160,83 @@ class GameMenuAndAuctionTests(unittest.TestCase):
         self.game._menu_trade(self.p1)  # pylint: disable=protected-access
         self.assertEqual(len(trade_calls), 1)
 
+    def test_menu_trade_returns_when_no_other_players(self):
+        """_menu_trade should return early if there are no other players."""
+        self.game.players = [self.p1]
+
+        trade_calls = []
+
+        def fake_trade(*_args, **_kwargs):
+            trade_calls.append(1)
+
+        self.game.trade = fake_trade
+        self.game._menu_trade(self.p1)  # pylint: disable=protected-access
+        self.assertEqual(trade_calls, [])
+
+    def test_menu_trade_returns_when_player_has_no_properties(self):
+        """_menu_trade should not call trade if the player has no properties."""
+        board = self.game.board
+        prop = board.properties[0]
+        prop.owner = None
+        self.p1.properties = []
+
+        sequence = [1]  # choose partner #1 (valid)
+
+        def safe_int(_prompt, default=0):
+            return sequence.pop(0)
+
+        ui_module.safe_int_input = safe_int
+        trade_calls = []
+
+        def fake_trade(*_args, **_kwargs):
+            trade_calls.append(1)
+
+        self.game.trade = fake_trade
+        self.game._menu_trade(self.p1)  # pylint: disable=protected-access
+        self.assertEqual(trade_calls, [])
+
+    def test_menu_trade_returns_on_invalid_partner_selection(self):
+        """Invalid partner index should cause _menu_trade to return without trading."""
+        board = self.game.board
+        prop = board.properties[0]
+        prop.owner = self.p1
+        self.p1.properties = [prop]
+
+        def safe_int(_prompt, default=0):
+            return 0  # results in idx = -1, which is invalid
+
+        ui_module.safe_int_input = safe_int
+        trade_calls = []
+
+        def fake_trade(*_args, **_kwargs):
+            trade_calls.append(1)
+
+        self.game.trade = fake_trade
+        self.game._menu_trade(self.p1)  # pylint: disable=protected-access
+        self.assertEqual(trade_calls, [])
+
+    def test_menu_trade_returns_on_invalid_property_selection(self):
+        """Invalid property index should cause _menu_trade to return without trading."""
+        board = self.game.board
+        prop = board.properties[0]
+        prop.owner = self.p1
+        self.p1.properties = [prop]
+
+        sequence = [1, 0]  # valid partner (idx 0), invalid property (pidx = -1)
+
+        def safe_int(_prompt, default=0):
+            return sequence.pop(0)
+
+        ui_module.safe_int_input = safe_int
+        trade_calls = []
+
+        def fake_trade(*_args, **_kwargs):
+            trade_calls.append(1)
+
+        self.game.trade = fake_trade
+        self.game._menu_trade(self.p1)  # pylint: disable=protected-access
+        self.assertEqual(trade_calls, [])
+
     def test_auction_property_no_bids_and_with_winner(self):
         board = self.game.board
         prop = board.properties[0]
@@ -168,7 +244,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
         # First, auction with everyone passing (bid 0).
         bids = [0, 0]
 
-        def safe_zero(_prompt, default=0):  # pylint: disable=unused-argument
+        def safe_zero(_prompt, default=0):  
             return bids.pop(0)
 
         ui_module.safe_int_input = safe_zero
@@ -179,12 +255,48 @@ class GameMenuAndAuctionTests(unittest.TestCase):
         self.game.players = [self.p1]
         self.p1.balance = 500
 
-        def safe_bid(_prompt, default=0):  # pylint: disable=unused-argument
+        def safe_bid(_prompt, default=0):  
             return 200
 
         ui_module.safe_int_input = safe_bid
         self.game.auction_property(prop)
         self.assertIs(prop.owner, self.p1)
+
+    def test_auction_property_rejects_low_and_unaffordable_bids(self):
+        board = self.game.board
+        prop = board.properties[0]
+
+        # First, test a valid opening bid followed by a too-low raise.
+        # P1 bids 50, P2 attempts only a 5 increase when the minimum
+        # increment is higher, so their bid should be rejected.
+        self.p1.balance = 500
+        self.p2.balance = 500
+        bids = [50, 55]
+
+        def safe_bids(_prompt, default=0):  
+            return bids.pop(0)
+
+        ui_module.safe_int_input = safe_bids
+        self.game.auction_property(prop)
+        self.assertIs(prop.owner, self.p1)
+
+        # Reset ownership for the next scenario.
+        prop.owner = None
+        if prop in self.p1.properties:
+            self.p1.remove_property(prop)
+
+        # Now, a single player attempts a bid they cannot afford.
+        self.game.players = [self.p1]
+        self.p1.balance = 100
+
+        def unaffordable_bid(_prompt, default=0):  
+            return 200
+
+        ui_module.safe_int_input = unaffordable_bid
+        start_bank = self.game.bank.get_balance()
+        self.game.auction_property(prop)
+        self.assertIsNone(prop.owner)
+        self.assertEqual(self.game.bank.get_balance(), start_bank)
 
     def test_play_turn_triple_doubles_sends_to_jail(self):
         """After three consecutive doubles, play_turn should jail the player."""
@@ -206,6 +318,124 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         self.assertTrue(self.p1.jail.in_jail)
 
+    def test_play_turn_doubles_gives_extra_turn_without_advancing_player(self):
+        """A single doubles roll should grant an extra turn (no advance_turn)."""
+        # Avoid interactive_menu prompting for input.
+        self.game.interactive_menu = lambda: None
+        self.game.current_index = 0
+        player = self.game.current_player()
+
+        class _StubDice:
+            def __init__(self):
+                self.doubles_streak = 1  # already one doubles
+
+            def roll(self):
+                return 4
+
+            def describe(self):  
+                return "stub 4"
+
+            def is_doubles(self):  
+                return True
+
+        self.game.dice = _StubDice()
+
+        # Spy on advance_turn to ensure it is not called.
+        advanced = {"value": False}
+        original_advance = self.game.advance_turn
+
+        def fake_advance():  
+            advanced["value"] = True
+
+        try:
+            self.game.advance_turn = fake_advance
+            self.game.play_turn()
+        finally:
+            self.game.advance_turn = original_advance
+
+        # Current player index should be unchanged and advance_turn not called.
+        self.assertEqual(self.game.current_index, 0)
+        self.assertFalse(advanced["value"])
+
+    def test_play_turn_moves_player_and_advances_turn_for_non_doubles(self):
+        """Non-double roll should move the player and advance the turn."""
+        # Stub out interactive_menu to avoid input.
+        self.game.interactive_menu = lambda: None
+        self.game.current_index = 0
+        player = self.game.current_player()
+        player.position = 0
+
+        # Use the real Dice object but stub _move_and_resolve so that
+        # movement is driven solely by play_turn and Dice.roll.
+        steps_seen = {"value": None}
+
+        real_move_resolve = self.game._move_and_resolve  # pylint: disable=protected-access
+
+        def fake_move_resolve(p, steps):  
+            steps_seen["value"] = steps
+            # Still advance the player's position to keep semantics realistic.
+            p.move(steps)
+
+        try:
+            self.game._move_and_resolve = fake_move_resolve  # pylint: disable=protected-access
+            self.game.dice.die1 = 2
+            self.game.dice.die2 = 3
+            self.game.dice.doubles_streak = 0
+
+            # Force a single non-double outcome.
+            import moneypoly.dice as dice_module  # type: ignore
+
+            original_randint = dice_module.random.randint
+
+            rolls = [2, 3]
+
+            def fake_randint(_low, _high):
+                return rolls.pop(0)
+
+            dice_module.random.randint = fake_randint
+
+            try:
+                self.game.play_turn()
+            finally:
+                dice_module.random.randint = original_randint
+        finally:
+            self.game._move_and_resolve = real_move_resolve  # pylint: disable=protected-access
+
+        # Player should have moved by the rolled total and turn should advance.
+        self.assertEqual(steps_seen["value"], 5)
+        self.assertEqual(player.position, 5)
+        self.assertEqual(self.game.current_index, 1)
+
+    def test_play_turn_calls_jail_handler_for_jailed_player(self):
+        """When the player starts in jail, play_turn should delegate to _handle_jail_turn."""
+        self.p1.jail.in_jail = True
+        self.game.current_index = 0
+
+        handled = {"jail": False, "advanced": False}
+        original_handle = self.game._handle_jail_turn  # pylint: disable=protected-access
+        original_advance = self.game.advance_turn
+        original_safe_int = ui_module.safe_int_input
+
+        def fake_handle_jail(player):  
+            handled["jail"] = True
+            self.assertIs(player, self.p1)
+
+        def fake_advance():  
+            handled["advanced"] = True
+
+        try:
+            ui_module.safe_int_input = lambda _prompt, default=0: 0
+            self.game._handle_jail_turn = fake_handle_jail  # pylint: disable=protected-access
+            self.game.advance_turn = fake_advance
+            self.game.play_turn()
+        finally:
+            self.game._handle_jail_turn = original_handle  # pylint: disable=protected-access
+            self.game.advance_turn = original_advance
+            ui_module.safe_int_input = original_safe_int
+
+        self.assertTrue(handled["jail"])
+        self.assertTrue(handled["advanced"])
+
 
 class InteractiveMenuTests(unittest.TestCase):
     """Directly exercise each interactive_menu choice branch with stubs."""
@@ -224,13 +454,13 @@ class InteractiveMenuTests(unittest.TestCase):
     def test_interactive_menu_standings_and_exit(self):
         calls = []
 
-        def fake_standings(players):  # pylint: disable=unused-argument
+        def fake_standings(players):  
             calls.append("standings")
 
         ui_module.print_standings = fake_standings
         sequence = [1, 0]
 
-        def safe_sequence(_prompt, default=0):  # pylint: disable=unused-argument
+        def safe_sequence(_prompt, default=0):  
             return sequence.pop(0)
 
         ui_module.safe_int_input = safe_sequence
@@ -240,7 +470,7 @@ class InteractiveMenuTests(unittest.TestCase):
     def test_interactive_menu_board_and_mortgage_unmortgage_trade_loan(self):
         calls = []
 
-        def fake_board(board):  # pylint: disable=unused-argument
+        def fake_board(board):  
             calls.append("board")
 
         ui_module.print_board_ownership = fake_board
@@ -255,7 +485,7 @@ class InteractiveMenuTests(unittest.TestCase):
         choices = [2, 3, 4, 5, 6, 0]
         loan_amounts = [50]
 
-        def safe_menu(prompt, default=0):  # pylint: disable=unused-argument
+        def safe_menu(prompt, default=0):  
             if "Loan amount" in prompt:
                 return loan_amounts.pop(0)
             return choices.pop(0)
@@ -290,6 +520,11 @@ class UITests(unittest.TestCase):
         first_prop = board.properties[0]
         first_prop.owner = player
         player.add_property(first_prop)
+        # Also add a mortgaged property to exercise that branch.
+        second_prop = board.properties[1]
+        second_prop.owner = player
+        second_prop.is_mortgaged = True
+        player.add_property(second_prop)
 
         # Just ensure these functions execute without raising.
         ui_module.print_banner("Title")
@@ -319,10 +554,15 @@ class MainModuleTests(unittest.TestCase):
     """Tests for the main module entry point and its exception branches."""
 
     def test_main_normal_flow_uses_game(self):
+        # Also exercise get_player_names itself by patching input.
+        with mock.patch("builtins.input", return_value="A, B"):
+            names = main_module.get_player_names()
+        self.assertEqual(names, ["A", "B"])
+
         with mock.patch.object(main_module, "get_player_names", return_value=["A", "B"]):
 
             class DummyGame:
-                def __init__(self, names):  # pylint: disable=unused-argument
+                def __init__(self, names):  
                     self.ran = False
 
                 def run(self):
@@ -334,7 +574,7 @@ class MainModuleTests(unittest.TestCase):
     def test_main_catches_keyboard_interrupt(self):
         with mock.patch.object(main_module, "get_player_names", return_value=["A", "B"]):
 
-            def raising_init(_names):  # pylint: disable=unused-argument
+            def raising_init(_names):  
                 raise KeyboardInterrupt()
 
             with mock.patch.object(main_module, "Game", side_effect=raising_init):
@@ -343,7 +583,7 @@ class MainModuleTests(unittest.TestCase):
     def test_main_catches_value_error(self):
         with mock.patch.object(main_module, "get_player_names", return_value=["A", "B"]):
 
-            def raising_init(_names):  # pylint: disable=unused-argument
+            def raising_init(_names):  
                 raise ValueError("bad setup")
 
             with mock.patch.object(main_module, "Game", side_effect=raising_init):

@@ -89,7 +89,12 @@ class BankCoreTests(unittest.TestCase):
         self.assertEqual(self.bank.loan_count(), 1)
         self.assertEqual(self.bank.total_loans_issued(), 100)
 
-        # summary() and __repr__ should be callable without error.
+        # summary() and __repr__ should be callable without error, both
+        # before and after any loans are issued.
+        fresh_bank = Bank()
+        _ = repr(fresh_bank)
+        fresh_bank.summary()
+
         _ = repr(self.bank)
         self.bank.summary()
 

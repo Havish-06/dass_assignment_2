@@ -298,13 +298,17 @@ class Game:
             print(f"  {player.name} has been sent to Jail!")
 
         elif tile == "income_tax":
-            player.deduct_money(INCOME_TAX_AMOUNT)
-            self.bank.collect(INCOME_TAX_AMOUNT)
+            amount = min(player.balance, INCOME_TAX_AMOUNT)
+            if amount > 0:
+                player.deduct_money(amount)
+                self.bank.collect(amount)
             print(f"  {player.name} paid income tax: ${INCOME_TAX_AMOUNT}.")
 
         elif tile == "luxury_tax":
-            player.deduct_money(LUXURY_TAX_AMOUNT)
-            self.bank.collect(LUXURY_TAX_AMOUNT)
+            amount = min(player.balance, LUXURY_TAX_AMOUNT)
+            if amount > 0:
+                player.deduct_money(amount)
+                self.bank.collect(amount)
             print(f"  {player.name} paid luxury tax: ${LUXURY_TAX_AMOUNT}.")
 
         elif tile == "free_parking":
@@ -340,8 +344,10 @@ class Game:
                 self.buy_property(player, prop)
             elif choice == "a":
                 self.auction_property(prop)
-            else:
+            elif choice == "s":
                 print(f"  {player.name} passes on {prop.name}.")
+            else:
+                print("  Invalid choice; skipping by default.")
         elif prop.owner == player:
             print(f"  {player.name} owns {prop.name}. No rent due.")
         else:
@@ -461,8 +467,10 @@ class Game:
 
         # Offer to pay the fine voluntarily
         if ui.confirm(f"  Pay ${JAIL_FINE} fine to leave jail? (y/n): "):
-            player.deduct_money(JAIL_FINE)
-            self.bank.collect(JAIL_FINE)
+            amount = min(player.balance, JAIL_FINE)
+            if amount > 0:
+                player.deduct_money(amount)
+                self.bank.collect(amount)
             # Paying the fine can itself cause bankruptcy; eliminate the
             # player immediately rather than letting them move.
             self.check_bankruptcy(player)
@@ -481,8 +489,10 @@ class Game:
         if player.jail.turns >= 3:
             # Mandatory release after 3 turns
             print(f"  {player.name} must leave jail. Paying mandatory ${JAIL_FINE} fine.")
-            player.deduct_money(JAIL_FINE)
-            self.bank.collect(JAIL_FINE)
+            amount = min(player.balance, JAIL_FINE)
+            if amount > 0:
+                player.deduct_money(amount)
+                self.bank.collect(amount)
             self.check_bankruptcy(player)
             if player not in self.players:
                 return

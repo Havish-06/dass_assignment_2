@@ -61,6 +61,97 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
         # After purchase, balance should be zero.
         self.assertEqual(self.a.balance, 0)
 
+    def test_buy_property_fails_when_balance_below_price(self):
+        """A player with balance below the price should not be able to buy."""
+        prop = self.game.board.properties[0]
+        price = prop.price
+
+        self.a.balance = price - 1
+
+        success = self.game.buy_property(self.a, prop)
+
+        self.assertFalse(success)
+        self.assertIsNone(prop.owner)
+        self.assertNotIn(prop, self.a.properties)
+
+    def test_handle_property_tile_skip_with_s_leaves_property_unowned(self):
+        """Choosing 's' to skip an unowned property should not buy or auction it."""
+        game = Game(["A", "B"])
+        player = game.players[0]
+        prop = game.board.properties[0]
+        prop.owner = None
+
+        called = {"buy": False, "auction": False}
+
+        original_buy = game.buy_property
+        original_auction = game.auction_property
+
+        def fake_buy(p, pr):  
+            called["buy"] = True
+            return original_buy(p, pr)
+
+        def fake_auction(pr):  
+            called["auction"] = True
+            return original_auction(pr)
+
+        game.buy_property = fake_buy
+        game.auction_property = fake_auction
+
+        # Simulate the player choosing to skip explicitly with 's'.
+        import builtins  # type: ignore
+
+        original_input = builtins.input
+        try:
+            builtins.input = lambda _prompt="": "s"
+            game.handle_property_tile(player, prop)
+        finally:
+            builtins.input = original_input
+            game.buy_property = original_buy
+            game.auction_property = original_auction
+
+        self.assertIsNone(prop.owner)
+        self.assertFalse(called["buy"])
+        self.assertFalse(called["auction"])
+
+    def test_handle_property_tile_invalid_choice_defaults_to_skip(self):
+        """An invalid choice should not trigger buy or auction and leave property unowned."""
+        game = Game(["A", "B"])
+        player = game.players[0]
+        prop = game.board.properties[0]
+        prop.owner = None
+
+        called = {"buy": False, "auction": False}
+
+        original_buy = game.buy_property
+        original_auction = game.auction_property
+
+        def fake_buy(p, pr):  
+            called["buy"] = True
+            return original_buy(p, pr)
+
+        def fake_auction(pr):  
+            called["auction"] = True
+            return original_auction(pr)
+
+        game.buy_property = fake_buy
+        game.auction_property = fake_auction
+
+        import builtins  # type: ignore
+
+        original_input = builtins.input
+        try:
+            # Provide an invalid option such as 'x'.
+            builtins.input = lambda _prompt="": "x"
+            game.handle_property_tile(player, prop)
+        finally:
+            builtins.input = original_input
+            game.buy_property = original_buy
+            game.auction_property = original_auction
+
+        self.assertIsNone(prop.owner)
+        self.assertFalse(called["buy"])
+        self.assertFalse(called["auction"])
+
 
 if __name__ == "__main__":
     unittest.main()

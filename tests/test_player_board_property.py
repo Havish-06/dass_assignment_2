@@ -38,6 +38,10 @@ class PlayerTests(unittest.TestCase):
         self.assertEqual(player.count_properties(), 1)
         self.assertIn("P1", repr(player))
 
+        # Removing a property should decrease the count again.
+        player.remove_property(prop)
+        self.assertEqual(player.count_properties(), 0)
+
         # Status line should include jailed tag when in jail.
         player.go_to_jail()
         status = player.status_line()
@@ -87,6 +91,11 @@ class PropertyAndGroupTests(unittest.TestCase):
         # Second unmortgage attempt yields 0.
         self.assertEqual(prop.unmortgage(), 0)
 
+        # When a property is owned, it should no longer be available.
+        owner = Player("Owner")
+        prop.owner = owner
+        self.assertFalse(prop.is_available())
+
     def test_group_ownership_rent_and_counts(self):
         group = PropertyGroup("Pair", "yellow")
         spec1 = PropertySpec("A", 1, 100, 10)
@@ -121,6 +130,10 @@ class PropertyAndGroupTests(unittest.TestCase):
         self.assertEqual(group.size(), 2)
         self.assertIn("PropertyGroup", repr(group))
 
+        # Mortgaged properties in a full group should charge no rent.
+        prop1.is_mortgaged = True
+        self.assertEqual(prop1.get_rent(), 0)
+
 
 class BoardTests(unittest.TestCase):
     """Tests for Board helper methods and tile classification."""
@@ -133,12 +146,16 @@ class BoardTests(unittest.TestCase):
         self.assertIsNotNone(mediterranean)
         self.assertEqual(mediterranean.position, 1)
 
+        # Position 0 is Go and not a property.
+        self.assertIsNone(board.get_property_at(0))
+
         # Non-property position returns None.
         self.assertIsNone(board.get_property_at(12))
 
-        # Tile types: go, property, blank, and a special tile.
+        # Tile types: go, property, jail, blank, and a special tile.
         self.assertEqual(board.get_tile_type(0), "go")
         self.assertEqual(board.get_tile_type(1), "property")
+        self.assertEqual(board.get_tile_type(JAIL_POSITION), "jail")
         self.assertEqual(board.get_tile_type(12), "blank")
 
         # SPECIAL_TILES are recognised as special.

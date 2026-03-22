@@ -9,6 +9,7 @@ if PACKAGE_ROOT not in sys.path:
     sys.path.insert(0, PACKAGE_ROOT)
 
 from moneypoly.game import Game, apply_card
+from moneypoly.config import GO_SALARY, JAIL_POSITION
 
 
 class BirthdayAndCollectFromAllBankruptcyTests(unittest.TestCase):
@@ -69,6 +70,102 @@ class BirthdayAndCollectFromAllBankruptcyTests(unittest.TestCase):
         self.assertTrue(self.p3.is_bankrupt())
         self.assertNotIn(self.p3, self.game.players)
         self.assertTrue(self.p3.is_eliminated)
+
+    def test_collect_card_pays_from_bank_to_player(self):
+        """A 'collect' card should pay the player from the bank's funds."""
+        self.game = Game(["P1"])
+        (player,) = self.game.players
+        start_player = player.balance
+        start_bank = self.game.bank.get_balance()
+
+        card = {"description": "Bank error in your favour", "action": "collect", "value": 50}
+
+        apply_card(self.game, player, card)
+
+        self.assertEqual(player.balance, start_player + 50)
+        self.assertEqual(self.game.bank.get_balance(), start_bank - 50)
+
+    def test_pay_card_charges_player_and_credits_bank(self):
+        """A 'pay' card should deduct from the player and credit the bank."""
+        self.game = Game(["P1"])
+        (player,) = self.game.players
+        start_player = player.balance
+        start_bank = self.game.bank.get_balance()
+
+        card = {"description": "Doctor's fees", "action": "pay", "value": 25}
+
+        apply_card(self.game, player, card)
+
+        self.assertEqual(player.balance, start_player - 25)
+        self.assertEqual(self.game.bank.get_balance(), start_bank + 25)
+
+    def test_jail_card_sends_player_directly_to_jail(self):
+        """A 'jail' card should move the player directly to jail."""
+        self.game = Game(["P1"])
+        (player,) = self.game.players
+
+        card = {"description": "Go to Jail", "action": "jail", "value": 0}
+
+        apply_card(self.game, player, card)
+
+        self.assertTrue(player.jail.in_jail)
+        self.assertEqual(player.position, JAIL_POSITION)
+
+    def test_jail_free_card_increases_jail_card_count(self):
+        """A 'jail_free' card should grant a Get Out of Jail Free card."""
+        self.game = Game(["P1"])
+        (player,) = self.game.players
+        self.assertEqual(player.jail.cards, 0)
+
+        card = {"description": "Get Out of Jail Free", "action": "jail_free", "value": 0}
+
+        apply_card(self.game, player, card)
+
+        self.assertEqual(player.jail.cards, 1)
+
+    def test_move_to_card_moves_player_and_awards_go_salary_when_passing(self):
+        """A 'move_to' card should move the player and pay Go salary if passing Go."""
+        self.game = Game(["P1"])
+        (player,) = self.game.players
+        # Start somewhere past Go so that moving back to 0 counts as passing.
+        player.position = 10
+        start_balance = player.balance
+
+        card = {"description": "Advance to Go", "action": "move_to", "value": 0}
+
+        apply_card(self.game, player, card)
+
+        self.assertEqual(player.position, 0)
+        self.assertEqual(player.balance, start_balance + GO_SALARY)
+
+    def test_move_to_card_calls_handle_property_tile_when_landing_on_property(self):
+        """A 'move_to' card should invoke property handling when landing on a property."""
+        self.game = Game(["P1"])
+        (player,) = self.game.players
+        board = self.game.board
+        target_prop = board.properties[0]
+        player.position = 0
+
+        calls = []
+
+        def fake_handle_property_tile(passed_player, passed_prop):
+            calls.append((passed_player, passed_prop))
+
+        self.game.handle_property_tile = fake_handle_property_tile
+
+        card = {
+            "description": "Advance to a property",
+            "action": "move_to",
+            "value": target_prop.position,
+        }
+
+        apply_card(self.game, player, card)
+
+        self.assertEqual(player.position, target_prop.position)
+        self.assertEqual(len(calls), 1)
+        called_player, called_prop = calls[0]
+        self.assertIs(called_player, player)
+        self.assertIs(called_prop, target_prop)
 
 
 if __name__ == "__main__":
