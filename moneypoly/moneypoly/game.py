@@ -18,82 +18,54 @@ from moneypoly.cards import CardDeck, CHANCE_CARDS, COMMUNITY_CHEST_CARDS
 from moneypoly import ui
 
 
-class Decks:
-    """Class to manage Chance and Community Chest decks."""
-    def __init__(self,game):
-        self.chance_deck = CardDeck(CHANCE_CARDS)
-        self.community_deck = CardDeck(COMMUNITY_CHEST_CARDS)
-        self.game = game
+CHANCE_DECK = CardDeck(CHANCE_CARDS)
+COMMUNITY_DECK = CardDeck(COMMUNITY_CHEST_CARDS)
 
-    def _card_action_collect(self,value):
-        amount = self.game.bank.pay_out(value)
-        self.game.current_player().add_money(amount)
 
-    def _card_action_pay(self,value):
-        player = self.game.current_player()
+def apply_card(game, player, card):
+    """Apply the effect of a drawn Chance or Community Chest card."""
+    if card is None:
+        return
+
+    print(f"  Card drawn: \"{card['description']}\"")
+    action = card["action"]
+    value = card["value"]
+
+    if action == "collect":
+        amount = game.bank.pay_out(value)
+        player.add_money(amount)
+    elif action == "pay":
         player.deduct_money(value)
-        self.game.bank.collect(value)
-
-    def _card_action_jail(self):
-        player = self.game.current_player()
+        game.bank.collect(value)
+    elif action == "jail":
         player.go_to_jail()
         print(f"  {player.name} has been sent to Jail!")
-
-    def _card_action_jail_free(self):
-        player = self.game.current_player()
+    elif action == "jail_free":
         player.get_out_of_jail_cards += 1
         print(f"  {player.name} now holds a Get Out of Jail Free card.")
-
-    def _card_action_move_to(self, value):
-        player = self.game.current_player()
+    elif action == "move_to":
         old_pos = player.position
         player.position = value
         if value < old_pos:
             player.add_money(GO_SALARY)
             print(f"  {player.name} passed Go and collected ${GO_SALARY}.")
-        tile = self.game.board.get_tile_type(value)
+        tile = game.board.get_tile_type(value)
         if tile == "property":
-            prop = self.game.board.get_property_at(value)
+            prop = game.board.get_property_at(value)
             if prop:
-                self.game.handle_property_tile(player, prop)
-    def _card_action_birthday(self,value):
-        player = self.game.current_player()
-        for other in self.game.players:
+                game.handle_property_tile(player, prop)
+    elif action == "birthday":
+        for other in game.players:
             if other != player and other.balance >= value:
                 other.deduct_money(value)
                 player.add_money(value)
-
-    def _card_action_collect_from_all(self,value):
-        player = self.game.current_player()
-        for other in self.game.players:
+    elif action == "collect_from_all":
+        for other in game.players:
             if other != player and other.balance >= value:
                 other.deduct_money(value)
                 player.add_money(value)
-    def apply_card(self, player, card):
-        """Apply the effect of a drawn Chance or Community Chest card."""
-        if card is None:
-            return
-        print(f"  Card drawn: \"{card['description']}\"")
-        action = card["action"]
-        value = card["value"]
-
-        # Dictionary mapping action strings to their respective methods
-        action_map = {
-            "collect": self._card_action_collect,
-            "pay": self._card_action_pay,
-            "jail": self._card_action_jail,
-            "jail_free": self._card_action_jail_free,
-            "move_to": self._card_action_move_to,
-            "birthday": self._card_action_birthday,
-            "collect_from_all": self._card_action_collect_from_all,
-        }
-
-        # Look up the correct method and execute it
-        action_method = action_map.get(action)
-        if action_method:
-            action_method(player, value)
-        else:
-            print(f"  Warning: Unknown card action '{action}'")
+    else:
+        print(f"  Warning: Unknown card action '{action}'")
 class Game:
     """Manages the full state and flow of a MoneyPoly game session."""
 
@@ -104,7 +76,6 @@ class Game:
         self.players = [Player(name) for name in player_names]
         self.current_index = 0
         self.turn_number = 0
-        self.decks = Decks(self)
 
     def current_player(self):
         """Return the Player whose turn it currently is."""
@@ -286,12 +257,12 @@ class Game:
             print(f"  {player.name} rests on Free Parking. Nothing happens.")
 
         elif tile == "chance":
-            card = self.decks.chance_deck.draw()
-            self.decks.apply_card(player, card)
+            card = CHANCE_DECK.draw()
+            apply_card(self, player, card)
 
         elif tile == "community_chest":
-            card = self.decks.community_deck.draw()
-            self.decks.apply_card(player, card)
+            card = COMMUNITY_DECK.draw()
+            apply_card(self, player, card)
 
         elif tile == "railroad": #seems redundant
             prop = self.board.get_property_at(position)
