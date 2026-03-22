@@ -3,6 +3,25 @@ including their balance, position, properties, and status."""
 from moneypoly.config import STARTING_BALANCE, BOARD_SIZE, GO_SALARY, JAIL_POSITION
 
 
+class _JailStatus:
+    """Tracks a player's jail-related state (turns and cards)."""
+
+    def __init__(self):
+        self.in_jail = False
+        self.turns = 0
+        self.cards = 0
+
+    def send_to_jail(self):
+        """Mark the player as jailed and reset the turn counter."""
+        self.in_jail = True
+        self.turns = 0
+
+    def release(self):
+        """Release the player from jail and reset turns."""
+        self.in_jail = False
+        self.turns = 0
+
+
 class Player:
     """Represents a single player in a MoneyPoly game."""
 
@@ -11,9 +30,7 @@ class Player:
         self.balance = balance
         self.position = 0
         self.properties = []
-        self.in_jail = False
-        self.jail_turns = 0
-        self.get_out_of_jail_cards = 0
+        self.jail = _JailStatus()
         self.is_eliminated = False
 
 
@@ -55,8 +72,7 @@ class Player:
     def go_to_jail(self):
         """Send this player directly to the Jail square."""
         self.position = JAIL_POSITION
-        self.in_jail = True
-        self.jail_turns = 0
+        self.jail.send_to_jail()
 
 
     def add_property(self, prop):
@@ -76,7 +92,7 @@ class Player:
 
     def status_line(self):
         """Return a concise one-line status string for this player."""
-        jail_tag = " [JAILED]" if self.in_jail else ""
+        jail_tag = " [JAILED]" if self.jail.in_jail else ""
         return (
             f"{self.name}: ${self.balance}  "
             f"pos={self.position}  "

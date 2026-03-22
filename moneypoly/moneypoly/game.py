@@ -208,7 +208,7 @@ class Game:
         # Allow the current player to use the pre-roll interactive menu
         # self.interactive_menu()
 
-        if player.in_jail:
+        if player.jail.in_jail:
             self._handle_jail_turn(player)
             self.advance_turn()
             return
@@ -384,14 +384,13 @@ class Game:
 
     def _handle_jail_turn(self, player):
         """Process a jailed player's turn — offer to pay fine or use card."""
-        print(f"  {player.name} is in jail (turn {player.jail_turns + 1}/3).")
+        print(f"  {player.name} is in jail (turn {player.jail.turns + 1}/3).")
 
         # Use a Get Out of Jail Free card if available
-        if player.get_out_of_jail_cards > 0:
+        if player.jail.cards > 0:
             if ui.confirm("  Use your Get Out of Jail Free card? (y/n): "):
-                player.get_out_of_jail_cards -= 1
-                player.in_jail = False
-                player.jail_turns = 0
+                player.jail.cards -= 1
+                player.jail.release()
                 print(f"  {player.name} used a Get Out of Jail Free card!")
                 roll = self.dice.roll()
                 print(f"  {player.name} rolled: {self.dice.describe()}")
@@ -401,8 +400,7 @@ class Game:
         # Offer to pay the fine voluntarily
         if ui.confirm(f"  Pay ${JAIL_FINE} fine to leave jail? (y/n): "):
             self.bank.collect(JAIL_FINE)
-            player.in_jail = False
-            player.jail_turns = 0
+            player.jail.release()
             print(f"  {player.name} paid the ${JAIL_FINE} fine and is released.")
             roll = self.dice.roll()
             print(f"  {player.name} rolled: {self.dice.describe()}")
@@ -411,20 +409,21 @@ class Game:
 
         # No action
         # Serve the turn
-        player.jail_turns += 1
-        if player.jail_turns >= 3:
+        player.jail.turns += 1
+        if player.jail.turns >= 3:
             # Mandatory release after 3 turns
             print(f"  {player.name} must leave jail. Paying mandatory ${JAIL_FINE} fine.")
             player.deduct_money(JAIL_FINE)
             self.bank.collect(JAIL_FINE)
-            player.in_jail = False
-            player.jail_turns = 0
+            player.jail.release()
             roll = self.dice.roll()
             print(f"  {player.name} rolled: {self.dice.describe()}")
             self._move_and_resolve(player, roll)
+            return
+
     def _check_bankruptcy(self, player):
         """Eliminate `player` from the game if they are bankrupt."""
-        if player.is_bankrupt(): #is this function even there?? this an error
+        if player.is_bankrupt():
             print(f"\n  *** {player.name} is bankrupt and has been eliminated! ***")
             player.is_eliminated = True
             # Release all properties back to the bank

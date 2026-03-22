@@ -10,14 +10,18 @@ def print_banner(title):
 
 def print_player_card(player):
     """Print a detailed status card for a single player."""
-    jail_line = f"  Status  : IN JAIL (turn {player.jail_turns}/3)\n" if player.in_jail else ""
+    jail_line = (
+        f"  Status  : IN JAIL (turn {player.jail.turns}/3)\n"
+        if player.jail.in_jail
+        else ""
+    )
     print(f"\n  Player  : {player.name}")
     print(f"  Balance : ${player.balance:,}")
     print(f"  Worth   : ${player.net_worth():,}")
     print(f"  Position: {player.position}")
     print(jail_line, end="")
-    if player.get_out_of_jail_cards:
-        print(f"  Jail cards: {player.get_out_of_jail_cards}")
+    if player.jail.cards:
+        print(f"  Jail cards: {player.jail.cards}")
     if player.properties:
         print("  Properties:")
         for prop in player.properties:
@@ -32,7 +36,7 @@ def print_standings(players):
     print("\n  [ Standings ]")
     ranked = sorted(players, key=lambda p: p.net_worth(), reverse=True)
     for i, player in enumerate(ranked, start=1):
-        jail_tag = " [JAILED]" if player.in_jail else ""
+        jail_tag = " [JAILED]" if player.jail.in_jail else ""
         print(
             f"  {i}. {player.name:<16} "
             f"${player.balance:>6,}  "
