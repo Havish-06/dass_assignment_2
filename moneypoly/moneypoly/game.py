@@ -22,6 +22,71 @@ CHANCE_DECK = CardDeck(CHANCE_CARDS)
 COMMUNITY_DECK = CardDeck(COMMUNITY_CHEST_CARDS)
 
 
+def _card_collect(game, player, value):
+    """Handle a card where the bank pays the player."""
+    amount = game.bank.pay_out(value)
+    player.add_money(amount)
+
+
+def _card_pay(game, player, value):
+    """Handle a card where the player pays the bank."""
+    player.deduct_money(value)
+    game.bank.collect(value)
+
+
+def _card_jail(game, player, value):  # pylint: disable=unused-argument
+    """Send the player directly to jail."""
+    player.go_to_jail()
+    print(f"  {player.name} has been sent to Jail!")
+
+
+def _card_jail_free(game, player, value):  # pylint: disable=unused-argument
+    """Give the player a Get Out of Jail Free card."""
+    player.jail.cards += 1
+    print(f"  {player.name} now holds a Get Out of Jail Free card.")
+
+
+def _card_move_to(game, player, value):
+    """Move the player to a board position, handling Go and property landing."""
+    old_pos = player.position
+    player.position = value
+    if value < old_pos:
+        player.add_money(GO_SALARY)
+        print(f"  {player.name} passed Go and collected ${GO_SALARY}.")
+    tile = game.board.get_tile_type(value)
+    if tile == "property":
+        prop = game.board.get_property_at(value)
+        if prop:
+            game.handle_property_tile(player, prop)
+
+
+def _card_birthday(game, player, value):
+    """Collect a fixed amount from every other player with enough cash."""
+    for other in game.players:
+        if other != player and other.balance >= value:
+            other.deduct_money(value)
+            player.add_money(value)
+
+
+def _card_collect_from_all(game, player, value):
+    """Collect a fixed amount from all other solvent players."""
+    for other in game.players:
+        if other != player and other.balance >= value:
+            other.deduct_money(value)
+            player.add_money(value)
+
+
+_ACTION_HANDLERS = {
+    "collect": _card_collect,
+    "pay": _card_pay,
+    "jail": _card_jail,
+    "jail_free": _card_jail_free,
+    "move_to": _card_move_to,
+    "birthday": _card_birthday,
+    "collect_from_all": _card_collect_from_all,
+}
+
+
 def apply_card(game, player, card):
     """Apply the effect of a drawn Chance or Community Chest card."""
     if card is None:
@@ -31,41 +96,11 @@ def apply_card(game, player, card):
     action = card["action"]
     value = card["value"]
 
-    if action == "collect":
-        amount = game.bank.pay_out(value)
-        player.add_money(amount)
-    elif action == "pay":
-        player.deduct_money(value)
-        game.bank.collect(value)
-    elif action == "jail":
-        player.go_to_jail()
-        print(f"  {player.name} has been sent to Jail!")
-    elif action == "jail_free":
-        player.get_out_of_jail_cards += 1
-        print(f"  {player.name} now holds a Get Out of Jail Free card.")
-    elif action == "move_to":
-        old_pos = player.position
-        player.position = value
-        if value < old_pos:
-            player.add_money(GO_SALARY)
-            print(f"  {player.name} passed Go and collected ${GO_SALARY}.")
-        tile = game.board.get_tile_type(value)
-        if tile == "property":
-            prop = game.board.get_property_at(value)
-            if prop:
-                game.handle_property_tile(player, prop)
-    elif action == "birthday":
-        for other in game.players:
-            if other != player and other.balance >= value:
-                other.deduct_money(value)
-                player.add_money(value)
-    elif action == "collect_from_all":
-        for other in game.players:
-            if other != player and other.balance >= value:
-                other.deduct_money(value)
-                player.add_money(value)
-    else:
+    handler = _ACTION_HANDLERS.get(action)
+    if handler is None:
         print(f"  Warning: Unknown card action '{action}'")
+        return
+    handler(game, player, value)
 class Game:
     """Manages the full state and flow of a MoneyPoly game session."""
 
