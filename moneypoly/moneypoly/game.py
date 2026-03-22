@@ -260,7 +260,7 @@ class Game:
         )
 
         # Allow the current player to use the pre-roll interactive menu
-        # self.interactive_menu()
+        self.interactive_menu()
 
         if player.jail.in_jail:
             self._handle_jail_turn(player)
@@ -373,8 +373,16 @@ class Game:
             return
 
         rent = prop.get_rent()
+        owner = prop.owner
         player.deduct_money(rent)
-        print(f"  {player.name} paid ${rent} rent on {prop.name} to {prop.owner.name}.")
+        if owner is not None:
+            owner.add_money(rent)
+        print(
+            f"  {player.name} paid ${rent} rent on {prop.name} to {owner.name}."
+        )
+        # Paying rent can cause bankruptcy; eliminate the player immediately
+        # rather than relying solely on the caller to perform this check.
+        self.check_bankruptcy(player)
 
 
     def trade(self, seller, buyer, prop, cash_amount):

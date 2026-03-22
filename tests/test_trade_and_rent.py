@@ -32,6 +32,33 @@ class TradeAndRentTests(unittest.TestCase):
 
         self.assertEqual(self.buyer.balance, starting_balance)
 
+    def test_pay_rent_transfers_to_owner(self):
+        """When rent is due, it should be transferred to the property's owner."""
+        # Ensure property is not mortgaged and owned by seller.
+        self.prop.is_mortgaged = False
+        rent = self.prop.get_rent()
+        starting_buyer = self.buyer.balance
+        starting_seller = self.seller.balance
+
+        self.game.pay_rent(self.buyer, self.prop)
+
+        self.assertEqual(self.buyer.balance, starting_buyer - rent)
+        self.assertEqual(self.seller.balance, starting_seller + rent)
+
+    def test_pay_rent_can_bankrupt_tenant(self):
+        """If the tenant cannot afford rent, they should go bankrupt and be eliminated."""
+        self.prop.is_mortgaged = False
+        rent = self.prop.get_rent()
+        # Set buyer's balance so that paying rent pushes them below zero.
+        self.buyer.balance = rent - 1
+
+        self.game.pay_rent(self.buyer, self.prop)
+
+        # Buyer should now be bankrupt and removed from the game.
+        self.assertTrue(self.buyer.is_bankrupt())
+        self.assertTrue(self.buyer.is_eliminated)
+        self.assertNotIn(self.buyer, self.game.players)
+
     def test_trade_fails_when_seller_does_not_own_property(self):
         """Trade must fail if the seller does not actually own the property."""
         self.prop.owner = None
