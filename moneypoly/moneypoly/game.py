@@ -61,21 +61,35 @@ def _card_move_to(game, player, value):
 
 
 def _card_birthday(game, player, value):
-    """Collect a fixed amount from every other player with enough cash."""
+    """Collect a fixed amount from every other player who can afford it.
+
+    Players who do not have more than ``value`` in cash are skipped so that
+    the birthday card itself never causes bankruptcy.
+    """
     for other in list(game.players):
-        if other != player and other.balance >= value:
+        if other is player:
+            continue
+        # Only take money from players who strictly have more than the gift
+        # amount; this prevents their balance from reaching zero via birthday.
+        if other.balance > value:
             other.deduct_money(value)
             player.add_money(value)
             game.check_bankruptcy(other)
 
 
 def _card_collect_from_all(game, player, value):
-    """Collect a fixed amount from all other solvent players."""
+    """Collect a fixed amount from all other players, even if they go broke.
+
+    Unlike the birthday card, this action will attempt to take the money from
+    every other player regardless of their current balance, so it can cause
+    bankruptcy.
+    """
     for other in list(game.players):
-        if other != player and other.balance >= value:
-            other.deduct_money(value)
-            player.add_money(value)
-            game.check_bankruptcy(other)
+        if other is player:
+            continue
+        other.deduct_money(value)
+        player.add_money(value)
+        game.check_bankruptcy(other)
 
 
 _ACTION_HANDLERS = {
