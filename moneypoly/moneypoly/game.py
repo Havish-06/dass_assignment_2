@@ -17,16 +17,106 @@ from moneypoly.dice import Dice
 from moneypoly.cards import CardDeck, CHANCE_CARDS, COMMUNITY_CHEST_CARDS
 from moneypoly import ui
 
-class InteractiveMenu:
-    """Class to offer the functions of interactive menu"""
-    def __init__(self, game):
-        # Store a reference to the main game object
+
+class Decks:
+    """Class to manage Chance and Community Chest decks."""
+    def __init__(self,game):
+        self.chance_deck = CardDeck(CHANCE_CARDS)
+        self.community_deck = CardDeck(COMMUNITY_CHEST_CARDS)
         self.game = game
+
+    def _card_action_collect(self,value):
+        amount = self.game.bank.pay_out(value)
+        self.game.current_player().add_money(amount)
+
+    def _card_action_pay(self,value):
+        player = self.game.current_player()
+        player.deduct_money(value)
+        self.game.bank.collect(value)
+
+    def _card_action_jail(self):
+        player = self.game.current_player()
+        player.go_to_jail()
+        print(f"  {player.name} has been sent to Jail!")
+
+    def _card_action_jail_free(self):
+        player = self.game.current_player()
+        player.get_out_of_jail_cards += 1
+        print(f"  {player.name} now holds a Get Out of Jail Free card.")
+
+    def _card_action_move_to(self, value):
+        player = self.game.current_player()
+        old_pos = player.position
+        player.position = value
+        if value < old_pos:
+            player.add_money(GO_SALARY)
+            print(f"  {player.name} passed Go and collected ${GO_SALARY}.")
+        tile = self.game.board.get_tile_type(value)
+        if tile == "property":
+            prop = self.game.board.get_property_at(value)
+            if prop:
+                self.game.handle_property_tile(player, prop)
+    def _card_action_birthday(self,value):
+        player = self.game.current_player()
+        for other in self.game.players:
+            if other != player and other.balance >= value:
+                other.deduct_money(value)
+                player.add_money(value)
+
+    def _card_action_collect_from_all(self,value):
+        player = self.game.current_player()
+        for other in self.game.players:
+            if other != player and other.balance >= value:
+                other.deduct_money(value)
+                player.add_money(value)
+    def apply_card(self, player, card):
+        """Apply the effect of a drawn Chance or Community Chest card."""
+        if card is None:
+            return
+        print(f"  Card drawn: \"{card['description']}\"")
+        action = card["action"]
+        value = card["value"]
+
+        # Dictionary mapping action strings to their respective methods
+        action_map = {
+            "collect": self._card_action_collect,
+            "pay": self._card_action_pay,
+            "jail": self._card_action_jail,
+            "jail_free": self._card_action_jail_free,
+            "move_to": self._card_action_move_to,
+            "birthday": self._card_action_birthday,
+            "collect_from_all": self._card_action_collect_from_all,
+        }
+
+        # Look up the correct method and execute it
+        action_method = action_map.get(action)
+        if action_method:
+            action_method(player, value)
+        else:
+            print(f"  Warning: Unknown card action '{action}'")
+class Game:
+    """Manages the full state and flow of a MoneyPoly game session."""
+
+    def __init__(self, player_names):
+        self.board = Board()
+        self.bank = Bank()
+        self.dice = Dice()
+        self.players = [Player(name) for name in player_names]
+        self.current_index = 0
+        self.turn_number = 0
+        self.decks = Decks(self)
+
+    def current_player(self):
+        """Return the Player whose turn it currently is."""
+        return self.players[self.current_index]
+
+    def advance_turn(self):
+        """Move to the next player in the rotation."""
+        self.current_index = (self.current_index + 1) % len(self.players)
+        self.turn_number += 1
+
     def interactive_menu(self):
-        """
-        Offer the current player a pre-roll action menu (mortgage, trade, etc.).
-        Returns when the player chooses to roll.
-        """
+        """Offer the current player a pre-roll menu (mortgage, trade, etc.)."""
         while True:
             print("\n  Pre-roll options:")
             print("    1. View standings")
@@ -41,19 +131,19 @@ class InteractiveMenu:
             if choice == 0:
                 break
             if choice == 1:
-                ui.print_standings(self.game.players)
+                ui.print_standings(self.players)
             elif choice == 2:
-                ui.print_board_ownership(self.game.board)
+                ui.print_board_ownership(self.board)
             elif choice == 3:
-                self._menu_mortgage(self.game.players[self.game.current_index])
+                self._menu_mortgage(self.current_player())
             elif choice == 4:
-                self._menu_unmortgage(self.game.players[self.game.current_index])
+                self._menu_unmortgage(self.current_player())
             elif choice == 5:
-                self._menu_trade(self.game.players[self.game.current_index])
+                self._menu_trade(self.current_player())
             elif choice == 6:
                 amount = ui.safe_int_input("  Loan amount: ", default=0)
                 if amount > 0:
-                    self.game.bank.give_loan(self.game.players[self.game.current_index], amount)
+                    self.bank.give_loan(self.current_player(), amount)
 
     def mortgage_property(self, player, prop):
         """Mortgage `prop` owned by `player` and credit them the payout."""
@@ -65,7 +155,7 @@ class InteractiveMenu:
             print(f"  {prop.name} is already mortgaged.")
             return False
         player.add_money(payout)
-        self.game.bank.collect(-payout)
+        self.bank.collect(-payout)
         print(f"  {player.name} mortgaged {prop.name} and received ${payout}.")
         return True
 
@@ -82,7 +172,7 @@ class InteractiveMenu:
             print(f"  {player.name} cannot afford to unmortgage {prop.name} (${cost}).")
             return False
         player.deduct_money(cost)
-        self.game.bank.collect(cost)
+        self.bank.collect(cost)
         print(f"  {player.name} unmortgaged {prop.name} for ${cost}.")
         return True
 
@@ -113,7 +203,7 @@ class InteractiveMenu:
 
     def _menu_trade(self, player):
         """Interactively set up a trade between the current player and another."""
-        others = [p for p in self.game.players if p != player]
+        others = [p for p in self.players if p != player]
         if not others:
             print("  No other players to trade with.")
             return
@@ -135,32 +225,7 @@ class InteractiveMenu:
         cash = ui.safe_int_input(
             f"  Cash to receive from {partner.name}: $", default=0
         )
-        self.game.trade(player, partner, chosen_prop, cash)
-
-
-class Game:
-    """Manages the full state and flow of a MoneyPoly game session."""
-
-    def __init__(self, player_names):
-        self.board = Board()
-        self.bank = Bank()
-        self.dice = Dice()
-        self.players = [Player(name) for name in player_names]
-        self.current_index = 0
-        self.turn_number = 0
-        self.running = True
-        self.chance_deck = CardDeck(CHANCE_CARDS)
-        self.community_deck = CardDeck(COMMUNITY_CHEST_CARDS)
-        self.menu = InteractiveMenu(self)
-
-    def current_player(self):
-        """Return the Player whose turn it currently is."""
-        return self.players[self.current_index]
-
-    def advance_turn(self):
-        """Move to the next player in the rotation."""
-        self.current_index = (self.current_index + 1) % len(self.players)
-        self.turn_number += 1
+        self.trade(player, partner, chosen_prop, cash)
 
     def play_turn(self):
         """Execute one complete turn for the current player."""
@@ -168,6 +233,9 @@ class Game:
         ui.print_banner(
             f"Turn {self.turn_number + 1}  |  {player.name}  |  ${player.balance}"
         )
+
+        # Allow the current player to use the pre-roll interactive menu
+        # self.interactive_menu()
 
         if player.in_jail:
             self._handle_jail_turn(player)
@@ -218,27 +286,27 @@ class Game:
             print(f"  {player.name} rests on Free Parking. Nothing happens.")
 
         elif tile == "chance":
-            card = self.chance_deck.draw()
-            self._apply_card(player, card)
+            card = self.decks.chance_deck.draw()
+            self.decks.apply_card(player, card)
 
         elif tile == "community_chest":
-            card = self.community_deck.draw()
-            self._apply_card(player, card)
+            card = self.decks.community_deck.draw()
+            self.decks.apply_card(player, card)
 
         elif tile == "railroad": #seems redundant
             prop = self.board.get_property_at(position)
             if prop is not None:
-                self._handle_property_tile(player, prop)
+                self.handle_property_tile(player, prop)
 
         elif tile == "property":
             prop = self.board.get_property_at(position)
             if prop is not None:
-                self._handle_property_tile(player, prop)
+                self.handle_property_tile(player, prop)
 
         self._check_bankruptcy(player)
 
 
-    def _handle_property_tile(self, player, prop):
+    def handle_property_tile(self, player, prop):
         """Decide what to do when `player` lands on a property tile."""
         if prop.owner is None:
             print(f"  {prop.name} is unowned — asking price ${prop.price}.")
@@ -383,55 +451,6 @@ class Game:
             roll = self.dice.roll()
             print(f"  {player.name} rolled: {self.dice.describe()}")
             self._move_and_resolve(player, roll)
-
-    def _apply_card(self, player, card):
-        """Apply the effect of a drawn Chance or Community Chest card."""
-        if card is None:
-            return
-        print(f"  Card drawn: \"{card['description']}\"")
-        action = card["action"]
-        value = card["value"]
-
-        if action == "collect":
-            amount = self.bank.pay_out(value)
-            player.add_money(amount)
-
-        elif action == "pay":
-            player.deduct_money(value)
-            self.bank.collect(value)
-
-        elif action == "jail":
-            player.go_to_jail()
-            print(f"  {player.name} has been sent to Jail!")
-
-        elif action == "jail_free":
-            player.get_out_of_jail_cards += 1
-            print(f"  {player.name} now holds a Get Out of Jail Free card.")
-
-        elif action == "move_to":
-            old_pos = player.position
-            player.position = value
-            if value < old_pos:
-                player.add_money(GO_SALARY)
-                print(f"  {player.name} passed Go and collected ${GO_SALARY}.")
-            tile = self.board.get_tile_type(value)
-            if tile == "property":
-                prop = self.board.get_property_at(value)
-                if prop:
-                    self._handle_property_tile(player, prop)
-
-        elif action == "birthday":
-            for other in self.players:
-                if other != player and other.balance >= value:
-                    other.deduct_money(value)
-                    player.add_money(value)
-        elif action == "collect_from_all":
-            for other in self.players:
-                if other != player and other.balance >= value:
-                    other.deduct_money(value)
-                    player.add_money(value)
-
-
     def _check_bankruptcy(self, player):
         """Eliminate `player` from the game if they are bankrupt."""
         if player.is_bankrupt(): #is this function even there?? this an error
@@ -460,7 +479,7 @@ class Game:
         for p in self.players:
             print(f"  {p.name} starts with ${p.balance}.")
 
-        while self.running and self.turn_number < MAX_TURNS:
+        while  self.turn_number < MAX_TURNS:
             if len(self.players) <= 1:
                 break
             self.play_turn()
