@@ -156,6 +156,46 @@ class RaceFlowIntegrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.manager.races.select_driver_and_car(race.race_id)
 
+    def test_assign_driver_and_car_fails_for_damaged_car(self) -> None:
+        """Assigning a car that is damaged should raise an error."""
+        
+        race = self.manager.races.create_race("Test Race", 1000)
+        car = self.manager.inventory.add_car("Clunker", 5, 5)
+        self.manager.maintenance.mark_car_damaged(car.car_id)
+        
+        with self.assertRaises(ValueError):
+            self.manager.races.assign_driver_and_car(race.race_id, self.driver_id, car.car_id)
+
+    def test_assign_driver_and_car_fails_for_non_driver_role(self) -> None:
+        """Assigning a crew member to race without DRIVER role should raise an error."""
+        
+        race = self.manager.races.create_race("Test Race", 1000)
+        mechanic = self.manager.registration.register_member("Wrench", initial_role=Role.MECHANIC)
+        
+        with self.assertRaises(ValueError):
+            self.manager.races.assign_driver_and_car(race.race_id, mechanic.member_id, self.car_id)
+
+    def test_race_loss_does_not_add_to_cash(self) -> None:
+        """A lost race result should not increase the inventory cash."""
+        
+        race = self.manager.races.create_race("Hard Race", 5000)
+        self.manager.races.assign_driver_and_car(race.race_id, self.driver_id, self.car_id)
+        
+        original_random = race_management_module.random.random
+        try:
+            # Force loss (random() >= 0.6)
+            race_management_module.random.random = lambda: 0.9
+            self.manager.races.run_race(race.race_id)
+        finally:
+            race_management_module.random.random = original_random
+            
+        self.assertEqual(race.result, "loss")
+        self.assertEqual(len(self.manager.state.results), 1)
+        
+        # Cash should remain unchanged (0 + 0).
+        self.assertEqual(self.manager.state.inventory.cash_balance, 0)
+        self.assertEqual(self.manager.state.results[0].cash_delta, 0)
+
 
 class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
     """Integration tests for mission planning and maintenance rules (CLI options 7–10, 12)."""
@@ -238,6 +278,28 @@ class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
         self.assertTrue(car.damaged)
         self.assertFalse(car.available)
         self.assertEqual(self.manager.state.inventory.cash_balance, start_cash)
+
+    def test_mission_cannot_start_with_partial_roles(self) -> None:
+        """Missions cannot start if they require multiple roles but only partial roles are assigned."""
+        
+        mission = self.manager.missions.create_mission("heist", [Role.DRIVER, Role.LEADER])
+        # Only assign the driver, missing the leader
+        self.manager.missions.assign_crew(mission.mission_id, [self.driver.member_id])
+        started = self.manager.missions.start_mission(mission.mission_id)
+        
+        self.assertFalse(started)
+        self.assertEqual(mission.status, MissionStatus.PLANNED)
+
+    def test_repair_undamaged_car_raises_error(self) -> None:
+        """Repairing a car that is not damaged should raise a ValueError and not deduct cash."""
+        
+        self.manager.inventory.update_cash(1000)
+        undamaged_car = self.manager.inventory.add_car("Pristine", speed_rating=5, durability=5)
+        
+        with self.assertRaises(ValueError):
+            self.manager.maintenance.repair_car(undamaged_car.car_id, 300)
+            
+        self.assertEqual(self.manager.state.inventory.cash_balance, 1000)
 
 
 class ReportingOverviewIntegrationTests(unittest.TestCase):

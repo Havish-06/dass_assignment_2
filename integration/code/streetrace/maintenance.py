@@ -29,7 +29,7 @@ class MaintenanceModule:
         if car is None:
             raise ValueError(f"Unknown car id {car_id}")
         if not car.damaged:
-            return
+            raise ValueError("Car is not damaged")
         InventoryModule(self._state).update_cash(-cost)
         car.damaged = False
         car.available = True
