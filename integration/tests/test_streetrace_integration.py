@@ -128,6 +128,34 @@ class RaceFlowIntegrationTests(unittest.TestCase):
         self.assertTrue(car.damaged)
         self.assertFalse(car.available)
 
+    def test_select_driver_and_car_fails_when_no_eligible_driver(self) -> None:
+        """Race selection should fail if no driver meets the minimum skill requirement."""
+
+        # Our seeded driver has skill 5; require more than that so the list is empty.
+        race = self.manager.races.create_race(
+            name="Too Hard Race",
+            prize_money=1_000,
+            min_driver_skill=10,
+            min_car_speed=0,
+        )
+
+        with self.assertRaises(ValueError):
+            self.manager.races.select_driver_and_car(race.race_id)
+
+    def test_select_driver_and_car_fails_when_no_eligible_car(self) -> None:
+        """Race selection should fail if no car meets the minimum speed requirement."""
+
+        # Our seeded car has speed 9; require more than that so there are no candidates.
+        race = self.manager.races.create_race(
+            name="No Fast Cars",
+            prize_money=1_000,
+            min_driver_skill=0,
+            min_car_speed=10,
+        )
+
+        with self.assertRaises(ValueError):
+            self.manager.races.select_driver_and_car(race.race_id)
+
 
 class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
     """Integration tests for mission planning and maintenance rules (CLI options 7–10, 12)."""
@@ -173,6 +201,14 @@ class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
         self.assertTrue(started)
         self.assertEqual(mission3.status, MissionStatus.IN_PROGRESS)
 
+    def test_mission_cannot_start_without_any_assigned_crew(self) -> None:
+        """Missions must have at least one crew member assigned before starting."""
+
+        mission = self.manager.missions.create_mission("unassigned", [Role.DRIVER])
+        started = self.manager.missions.start_mission(mission.mission_id)
+        self.assertFalse(started)
+        self.assertEqual(mission.status, MissionStatus.PLANNED)
+
     def test_repair_car_restores_availability_and_reduces_cash(self) -> None:
         """Repairing a damaged car should restore availability and deduct cash via inventory."""
 
@@ -187,6 +223,21 @@ class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
         self.assertFalse(car.damaged)
         self.assertTrue(car.available)
         self.assertEqual(self.manager.state.inventory.cash_balance, start_cash - cost)
+
+    def test_repair_car_with_insufficient_cash_raises_and_keeps_state(self) -> None:
+        """Repairs that would overdraw cash should raise and not change car state."""
+
+        # Ensure cash is lower than the repair cost.
+        start_cash = self.manager.state.inventory.cash_balance
+        cost = start_cash + 100 or 100
+
+        with self.assertRaises(ValueError):
+            self.manager.maintenance.repair_car(self.car_id, cost)
+
+        car = self.manager.state.inventory.cars[self.car_id]
+        self.assertTrue(car.damaged)
+        self.assertFalse(car.available)
+        self.assertEqual(self.manager.state.inventory.cash_balance, start_cash)
 
 
 class ReportingOverviewIntegrationTests(unittest.TestCase):
