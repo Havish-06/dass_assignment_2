@@ -14,3 +14,8 @@ dist/
 env/
 .venv/
 *.log
+
+# Blackbox ignores
+blackbox/quickcart_image/
+blackbox/*.md
+blackbox/*.tex
