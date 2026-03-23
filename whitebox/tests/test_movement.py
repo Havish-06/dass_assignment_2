@@ -1,6 +1,6 @@
 import os
 import sys
-import unittest
+import pytest
 
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
@@ -12,10 +12,10 @@ from moneypoly.game import Game
 from moneypoly.config import BOARD_SIZE, GO_SALARY
 
 
-class WinnerMovementAndPurchaseTests(unittest.TestCase):
+class TestWinnerMovementAndPurchase:
     """White-box tests for winner selection, movement, and property purchase."""
 
-    def setUp(self):
+    def setup_method(self):
         # Three players for comparing balances and ownership.
         self.game = Game(["A", "B", "C"])
         self.a, self.b, self.c = self.game.players
@@ -28,8 +28,8 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
 
         winner = self.game.find_winner()
 
-        self.assertIsNotNone(winner)
-        self.assertEqual(winner.name, "B")
+        assert winner is not None
+        assert winner.name == "B"
 
     def test_find_winner_with_no_players_returns_none(self):
         """find_winner should return None cleanly when there are no players."""
@@ -37,7 +37,7 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
 
         winner = empty_game.find_winner()
 
-        self.assertIsNone(winner)
+        assert winner is None
 
     def test_move_past_go_awards_salary(self):
         """Moving past position 0 should award the Go salary once."""
@@ -49,9 +49,9 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
         steps = 4
         new_pos = self.a.move(steps)
 
-        self.assertEqual(new_pos, 2)
+        assert new_pos == 2
         # Player should have received exactly one Go salary.
-        self.assertEqual(self.a.balance, starting_balance + GO_SALARY)
+        assert self.a.balance == starting_balance + GO_SALARY
 
     def test_move_lands_exactly_on_go_awards_salary(self):
         """Landing exactly on Go should also award the Go salary once."""
@@ -60,8 +60,8 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
 
         new_pos = self.a.move(1)
 
-        self.assertEqual(new_pos, 0)
-        self.assertEqual(self.a.balance, starting_balance + GO_SALARY)
+        assert new_pos == 0
+        assert self.a.balance == starting_balance + GO_SALARY
 
     def test_can_buy_property_with_exact_balance(self):
         """A player with balance equal to price should still be able to buy."""
@@ -73,11 +73,11 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
 
         success = self.game.buy_property(self.a, prop)
 
-        self.assertTrue(success)
-        self.assertIs(prop.owner, self.a)
-        self.assertIn(prop, self.a.properties)
+        assert success
+        assert prop.owner is self.a
+        assert prop in self.a.properties
         # After purchase, balance should be zero.
-        self.assertEqual(self.a.balance, 0)
+        assert self.a.balance == 0
 
     def test_buy_property_fails_when_balance_below_price(self):
         """A player with balance below the price should not be able to buy."""
@@ -88,9 +88,9 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
 
         success = self.game.buy_property(self.a, prop)
 
-        self.assertFalse(success)
-        self.assertIsNone(prop.owner)
-        self.assertNotIn(prop, self.a.properties)
+        assert not success
+        assert prop.owner is None
+        assert prop not in self.a.properties
 
     def test_handle_property_tile_skip_with_s_leaves_property_unowned(self):
         """Choosing 's' to skip an unowned property should not buy or auction it."""
@@ -127,9 +127,9 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
             game.buy_property = original_buy
             game.auction_property = original_auction
 
-        self.assertIsNone(prop.owner)
-        self.assertFalse(called["buy"])
-        self.assertFalse(called["auction"])
+        assert prop.owner is None
+        assert not called["buy"]
+        assert not called["auction"]
 
     def test_handle_property_tile_invalid_choice_loops_until_valid(self):
         """An invalid choice should loop and prompt again until a valid choice is made."""
@@ -167,9 +167,9 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
             game.buy_property = original_buy
             game.auction_property = original_auction
 
-        self.assertIsNone(prop.owner)
-        self.assertFalse(called["buy"])
-        self.assertFalse(called["auction"])
+        assert prop.owner is None
+        assert not called["buy"]
+        assert not called["auction"]
 
 
 

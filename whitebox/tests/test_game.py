@@ -1,6 +1,6 @@
 import os
 import sys
-import unittest
+import pytest
 from unittest import mock
 
 
@@ -40,16 +40,16 @@ class _StubDiceForPlay:
         return "stub"  # description not important for tests
 
 
-class GameMenuAndAuctionTests(unittest.TestCase):
+class TestGameMenuAndAuction:
     """Tests covering Game menus, auctions, mortgage helpers, and card edge cases."""
 
-    def setUp(self):
+    def setup_method(self):
         self.game = Game(["P1", "P2"])
         (self.p1, self.p2) = self.game.players
         self.original_safe_int = ui_module.safe_int_input
         self.original_confirm = ui_module.confirm
 
-    def tearDown(self):
+    def teardown_method(self):
         ui_module.safe_int_input = self.original_safe_int
         ui_module.confirm = self.original_confirm
 
@@ -58,47 +58,47 @@ class GameMenuAndAuctionTests(unittest.TestCase):
         card = {"description": "Weird", "action": "unknown_action", "value": 0}
         before_players = list(self.game.players)
         apply_card(self.game, self.p1, card)
-        self.assertEqual(self.game.players, before_players)
+        assert self.game.players == before_players
 
     def test_mortgage_and_unmortgage_property_paths(self):
         board = self.game.board
         prop = board.properties[0]
 
         # Cannot mortgage property you do not own.
-        self.assertFalse(self.game.mortgage_property(self.p1, prop))
+        assert not self.game.mortgage_property(self.p1, prop)
 
         # Successful mortgage when owned and not already mortgaged.
         prop.owner = self.p1
         self.p1.add_property(prop)
         start_balance = self.p1.balance
-        self.assertTrue(self.game.mortgage_property(self.p1, prop))
-        self.assertTrue(prop.is_mortgaged)
-        self.assertEqual(self.p1.balance, start_balance + prop.mortgage_value)
+        assert self.game.mortgage_property(self.p1, prop)
+        assert prop.is_mortgaged
+        assert self.p1.balance == start_balance + prop.mortgage_value
 
         # Attempting to mortgage again should fail.
-        self.assertFalse(self.game.mortgage_property(self.p1, prop))
+        assert not self.game.mortgage_property(self.p1, prop)
 
         # Unmortgage: not owner should fail.
         other = self.p2
         prop.owner = other
-        self.assertFalse(self.game.unmortgage_property(self.p1, prop))
+        assert not self.game.unmortgage_property(self.p1, prop)
 
         # Reset owner and ensure property is NOT mortgaged for initial checks.
         prop.owner = self.p1
         prop.is_mortgaged = False
         # Not mortgaged: unmortgage should report "not mortgaged" and fail.
-        self.assertFalse(self.game.unmortgage_property(self.p1, prop))
+        assert not self.game.unmortgage_property(self.p1, prop)
 
         # Now mortgage it for unmortgage tests.
         prop.is_mortgaged = True
         # Cannot afford unmortgage.
         self.p1.balance = 0
-        self.assertFalse(self.game.unmortgage_property(self.p1, prop))
+        assert not self.game.unmortgage_property(self.p1, prop)
 
         # Afford unmortgage.
         self.p1.balance = 10_000
-        self.assertTrue(self.game.unmortgage_property(self.p1, prop))
-        self.assertFalse(prop.is_mortgaged)
+        assert self.game.unmortgage_property(self.p1, prop)
+        assert not prop.is_mortgaged
 
     def test_menu_mortgage_and_unmortgage_and_trade(self):
         """Drive _menu_mortgage/_menu_unmortgage/_menu_trade via safe_int_input stubs."""
@@ -124,7 +124,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         self.game.mortgage_property = spy_mortgage
         self.game._menu_mortgage(self.p1)  # pylint: disable=protected-access
-        self.assertIn("mortgage", calls)
+        assert "mortgage" in calls
 
         # _menu_unmortgage: ensure there is a mortgaged property.
         prop.is_mortgaged = True
@@ -138,7 +138,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         self.game.unmortgage_property = spy_unmortgage
         self.game._menu_unmortgage(self.p1)  # pylint: disable=protected-access
-        self.assertIn("unmortgage", calls)
+        assert "unmortgage" in calls
 
         # _menu_trade: seller p1 has a property and trades with p2.
         self.p1.properties = [prop]
@@ -158,7 +158,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         self.game.trade = fake_trade
         self.game._menu_trade(self.p1)  # pylint: disable=protected-access
-        self.assertEqual(len(trade_calls), 1)
+        assert len(trade_calls) == 1
 
     def test_menu_trade_returns_when_no_other_players(self):
         """_menu_trade should return early if there are no other players."""
@@ -171,7 +171,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         self.game.trade = fake_trade
         self.game._menu_trade(self.p1)  # pylint: disable=protected-access
-        self.assertEqual(trade_calls, [])
+        assert trade_calls == []
 
     def test_menu_trade_returns_when_player_has_no_properties(self):
         """_menu_trade should not call trade if the player has no properties."""
@@ -193,7 +193,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         self.game.trade = fake_trade
         self.game._menu_trade(self.p1)  # pylint: disable=protected-access
-        self.assertEqual(trade_calls, [])
+        assert trade_calls == []
 
     def test_menu_trade_returns_on_invalid_partner_selection(self):
         """Invalid partner index should cause _menu_trade to return without trading."""
@@ -213,7 +213,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         self.game.trade = fake_trade
         self.game._menu_trade(self.p1)  # pylint: disable=protected-access
-        self.assertEqual(trade_calls, [])
+        assert trade_calls == []
 
     def test_menu_trade_returns_on_invalid_property_selection(self):
         """Invalid property index should cause _menu_trade to return without trading."""
@@ -235,7 +235,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         self.game.trade = fake_trade
         self.game._menu_trade(self.p1)  # pylint: disable=protected-access
-        self.assertEqual(trade_calls, [])
+        assert trade_calls == []
 
     def test_auction_property_no_bids_and_with_winner(self):
         board = self.game.board
@@ -249,7 +249,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         ui_module.safe_int_input = safe_zero
         self.game.auction_property(prop)
-        self.assertIsNone(prop.owner)
+        assert prop.owner is None
 
         # Now, single player bids successfully.
         self.game.players = [self.p1]
@@ -260,7 +260,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         ui_module.safe_int_input = safe_bid
         self.game.auction_property(prop)
-        self.assertIs(prop.owner, self.p1)
+        assert prop.owner is self.p1
 
     def test_auction_property_rejects_low_and_unaffordable_bids(self):
         board = self.game.board
@@ -278,7 +278,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         ui_module.safe_int_input = safe_bids
         self.game.auction_property(prop)
-        self.assertIs(prop.owner, self.p1)
+        assert prop.owner is self.p1
 
         # Reset ownership for the next scenario.
         prop.owner = None
@@ -295,8 +295,8 @@ class GameMenuAndAuctionTests(unittest.TestCase):
         ui_module.safe_int_input = unaffordable_bid
         start_bank = self.game.bank.get_balance()
         self.game.auction_property(prop)
-        self.assertIsNone(prop.owner)
-        self.assertEqual(self.game.bank.get_balance(), start_bank)
+        assert prop.owner is None
+        assert self.game.bank.get_balance() == start_bank
 
     def test_play_turn_triple_doubles_sends_to_jail(self):
         """After three consecutive doubles, play_turn should jail the player."""
@@ -316,7 +316,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
             self.game.play_turn()
             self.game.play_turn()
 
-        self.assertTrue(self.p1.jail.in_jail)
+        assert self.p1.jail.in_jail
 
     def test_play_turn_doubles_gives_extra_turn_without_advancing_player(self):
         """A single doubles roll should grant an extra turn (no advance_turn)."""
@@ -354,8 +354,8 @@ class GameMenuAndAuctionTests(unittest.TestCase):
             self.game.advance_turn = original_advance
 
         # Current player index should be unchanged and advance_turn not called.
-        self.assertEqual(self.game.current_index, 0)
-        self.assertFalse(advanced["value"])
+        assert self.game.current_index == 0
+        assert not advanced["value"]
 
     def test_play_turn_moves_player_and_advances_turn_for_non_doubles(self):
         """Non-double roll should move the player and advance the turn."""
@@ -402,9 +402,9 @@ class GameMenuAndAuctionTests(unittest.TestCase):
             self.game._move_and_resolve = real_move_resolve  # pylint: disable=protected-access
 
         # Player should have moved by the rolled total and turn should advance.
-        self.assertEqual(steps_seen["value"], 5)
-        self.assertEqual(player.position, 5)
-        self.assertEqual(self.game.current_index, 1)
+        assert steps_seen["value"] == 5
+        assert player.position == 5
+        assert self.game.current_index == 1
 
     def test_play_turn_calls_jail_handler_for_jailed_player(self):
         """When the player starts in jail, play_turn should delegate to _handle_jail_turn."""
@@ -418,7 +418,7 @@ class GameMenuAndAuctionTests(unittest.TestCase):
 
         def fake_handle_jail(player):  
             handled["jail"] = True
-            self.assertIs(player, self.p1)
+            assert player is self.p1
 
         def fake_advance():  
             handled["advanced"] = True
@@ -433,20 +433,20 @@ class GameMenuAndAuctionTests(unittest.TestCase):
             self.game.advance_turn = original_advance
             ui_module.safe_int_input = original_safe_int
 
-        self.assertTrue(handled["jail"])
-        self.assertTrue(handled["advanced"])
+        assert handled["jail"]
+        assert handled["advanced"]
 
 
-class InteractiveMenuTests(unittest.TestCase):
+class TestInteractiveMenu:
     """Directly exercise each interactive_menu choice branch with stubs."""
 
-    def setUp(self):
+    def setup_method(self):
         self.game = Game(["P1", "P2"])
         self.original_safe_int = ui_module.safe_int_input
         self.original_print_standings = ui_module.print_standings
         self.original_print_board_ownership = ui_module.print_board_ownership
 
-    def tearDown(self):
+    def teardown_method(self):
         ui_module.safe_int_input = self.original_safe_int
         ui_module.print_standings = self.original_print_standings
         ui_module.print_board_ownership = self.original_print_board_ownership
@@ -465,7 +465,7 @@ class InteractiveMenuTests(unittest.TestCase):
 
         ui_module.safe_int_input = safe_sequence
         self.game.interactive_menu()
-        self.assertIn("standings", calls)
+        assert "standings" in calls
 
     def test_interactive_menu_board_and_mortgage_unmortgage_trade_loan(self):
         calls = []
@@ -499,14 +499,14 @@ class InteractiveMenuTests(unittest.TestCase):
         self.game.bank.give_loan = lambda _p, _a: calls.append("loan")
 
         self.game.interactive_menu()
-        self.assertIn("board", calls)
-        self.assertIn("mortgage", calls)
-        self.assertIn("unmortgage", calls)
-        self.assertIn("trade", calls)
-        self.assertIn("loan", calls)
+        assert "board" in calls
+        assert "mortgage" in calls
+        assert "unmortgage" in calls
+        assert "trade" in calls
+        assert "loan" in calls
 
 
-class UITests(unittest.TestCase):
+class TestUI:
     """White-box tests for ui helpers and input wrappers."""
 
     def test_print_helpers_and_format_currency(self):
@@ -532,32 +532,32 @@ class UITests(unittest.TestCase):
         ui_module.print_standings([player])
         ui_module.print_board_ownership(board)
 
-        self.assertEqual(ui_module.format_currency(1500), "$1,500")
+        assert ui_module.format_currency(1500) == "$1,500"
 
     def test_safe_int_input_and_confirm(self):
         # safe_int_input returns an int when input is valid.
         with mock.patch("builtins.input", return_value="42"):
-            self.assertEqual(ui_module.safe_int_input("x", default=0), 42)
+            assert ui_module.safe_int_input("x", default=0) == 42
 
         # safe_int_input falls back to default on invalid input.
         with mock.patch("builtins.input", return_value="not-an-int"):
-            self.assertEqual(ui_module.safe_int_input("x", default=7), 7)
+            assert ui_module.safe_int_input("x", default=7) == 7
 
         # confirm interprets 'y' as True and anything else as False.
         with mock.patch("builtins.input", return_value="y"):
-            self.assertTrue(ui_module.confirm("?"))
+            assert ui_module.confirm("?")
         with mock.patch("builtins.input", return_value="n"):
-            self.assertFalse(ui_module.confirm("?"))
+            assert not ui_module.confirm("?")
 
 
-class MainModuleTests(unittest.TestCase):
+class TestMainModule:
     """Tests for the main module entry point and its exception branches."""
 
     def test_main_normal_flow_uses_game(self):
         # Also exercise get_player_names itself by patching input.
         with mock.patch("builtins.input", return_value="A, B"):
             names = main_module.get_player_names()
-        self.assertEqual(names, ["A", "B"])
+        assert names == ["A", "B"]
 
         with mock.patch.object(main_module, "get_player_names", return_value=["A", "B"]):
 

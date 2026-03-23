@@ -1,6 +1,6 @@
 import os
 import sys
-import unittest
+import pytest
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 PACKAGE_ROOT = os.path.join(PROJECT_ROOT, "moneypoly")
@@ -11,7 +11,7 @@ from moneypoly import dice as dice_module
 from moneypoly.cards import CardDeck
 
 
-class DiceTests(unittest.TestCase):
+class TestDice:
     """Branch-coverage tests for the Dice helper."""
 
     def test_reset_clears_values_and_streak(self):
@@ -22,9 +22,9 @@ class DiceTests(unittest.TestCase):
 
         dice.reset()
 
-        self.assertEqual(dice.die1, 0)
-        self.assertEqual(dice.die2, 0)
-        self.assertEqual(dice.doubles_streak, 0)
+        assert dice.die1 == 0
+        assert dice.die2 == 0
+        assert dice.doubles_streak == 0
 
     def test_roll_updates_doubles_streak_and_describe(self):
         """Exercise both doubles and non-doubles branches in roll/describe."""
@@ -40,34 +40,34 @@ class DiceTests(unittest.TestCase):
             dice.reset()
 
             total1 = dice.roll()
-            self.assertEqual(total1, 4)
-            self.assertTrue(dice.is_doubles())
-            self.assertEqual(dice.doubles_streak, 1)
-            self.assertIn("(DOUBLES)", dice.describe())
+            assert total1 == 4
+            assert dice.is_doubles()
+            assert dice.doubles_streak == 1
+            assert "(DOUBLES)" in dice.describe()
 
             total2 = dice.roll()
-            self.assertEqual(total2, 7)
-            self.assertFalse(dice.is_doubles())
-            self.assertEqual(dice.doubles_streak, 0)
-            self.assertNotIn("(DOUBLES)", dice.describe())
+            assert total2 == 7
+            assert not dice.is_doubles()
+            assert dice.doubles_streak == 0
+            assert "(DOUBLES)" not in dice.describe()
             # __repr__ should include the dice faces.
             rep = repr(dice)
-            self.assertIn("Dice(", rep)
+            assert "Dice(" in rep
         finally:
             dice_module.random.randint = original_randint
 
 
-class CardDeckTests(unittest.TestCase):
+class TestCardDeck:
     """Branch-coverage tests for CardDeck behaviour."""
 
     def test_empty_deck_draw_and_peek(self):
         deck = CardDeck([])
-        self.assertIsNone(deck.draw())
-        self.assertIsNone(deck.peek())
-        self.assertEqual(deck.cards_remaining(), 0)
+        assert deck.draw() is None
+        assert deck.peek() is None
+        assert deck.cards_remaining() == 0
         # __repr__ should work for an empty deck too.
-        self.assertIn("CardDeck", repr(deck))
-        self.assertEqual(len(deck), 0)
+        assert "CardDeck" in repr(deck)
+        assert len(deck) == 0
 
     def test_draw_cycles_through_cards_and_cards_remaining(self):
         cards = [
@@ -80,22 +80,22 @@ class CardDeckTests(unittest.TestCase):
         second = deck.draw()
         third = deck.draw()  # triggers automatic reshuffle before drawing again
 
-        self.assertEqual(first["description"], "A")
-        self.assertEqual(second["description"], "B")
+        assert first["description"] == "A"
+        assert second["description"] == "B"
         # After reshuffle, the deck is still a permutation of the same cards,
         # so the third draw must be either "A" or "B".
-        self.assertIn(third["description"], {"A", "B"})
+        assert third["description"] in {"A", "B"}
 
         # Peek on a non-empty deck should return a card without advancing.
         current_index = deck.index
         next_card = deck.peek()
-        self.assertIsNotNone(next_card)
-        self.assertEqual(deck.index, current_index)
+        assert next_card is not None
+        assert deck.index == current_index
 
         # After three draws from a two-card deck and an automatic reshuffle,
         # the index should now point just past the first card again and there
         # should be exactly one card remaining before the next reshuffle.
-        self.assertEqual(deck.cards_remaining(), 1)
+        assert deck.cards_remaining() == 1
 
     def test_auto_reshuffle_when_deck_exhausted(self):
         """Drawing past the end of the deck should reshuffle and restart."""
@@ -120,17 +120,17 @@ class CardDeckTests(unittest.TestCase):
 
             # Draw all cards once.
             seen = [deck.draw()["description"] for _ in range(3)]
-            self.assertCountEqual(seen, ["A", "B", "C"])
+            assert sorted(seen) == sorted(["A", "B", "C"])
 
             # Next draw should trigger an automatic reshuffle before drawing
             # again, so shuffle must have been called at least once.
             next_card = deck.draw()
-            self.assertIsNotNone(next_card)
-            self.assertTrue(shuffle_calls)
+            assert next_card is not None
+            assert shuffle_calls
 
             # After reshuffle, index should have advanced from 0 to 1 and
             # cards_remaining should report len(cards) - 1.
-            self.assertEqual(deck.cards_remaining(), len(cards) - 1)
+            assert deck.cards_remaining() == len(cards) - 1
         finally:
             cards_module.random.shuffle = real_shuffle
 
@@ -153,10 +153,10 @@ class CardDeckTests(unittest.TestCase):
 
             # Advance the index, then reshuffle which should reset it.
             _ = deck.draw()
-            self.assertEqual(deck.index, 1)
+            assert deck.index == 1
             deck.reshuffle()
-            self.assertEqual(deck.index, 0)
-            self.assertTrue(calls)  # ensure shuffle was invoked
+            assert deck.index == 0
+            assert calls
         finally:
             cards_module.random.shuffle = real_shuffle
 
@@ -165,11 +165,11 @@ class CardDeckTests(unittest.TestCase):
             {"description": "Z", "action": "collect", "value": 5},
         ]
         deck = CardDeck(cards)
-        self.assertEqual(len(deck), 1)
+        assert len(deck) == 1
         # __repr__ should return a non-empty string and not raise.
         rep = repr(deck)
-        self.assertIsInstance(rep, str)
-        self.assertIn("CardDeck", rep)
+        assert isinstance(rep, str)
+        assert "CardDeck" in rep
 
 
 if __name__ == "__main__":

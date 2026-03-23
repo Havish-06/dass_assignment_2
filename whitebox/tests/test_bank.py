@@ -1,6 +1,6 @@
 import os
 import sys
-import unittest
+import pytest
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 PACKAGE_ROOT = os.path.join(PROJECT_ROOT, "moneypoly")
@@ -11,40 +11,40 @@ from moneypoly.bank import Bank
 from moneypoly.config import BANK_STARTING_FUNDS
 
 
-class BankCoreTests(unittest.TestCase):
+class TestBankCore:
     """White-box tests for Bank core methods and edge cases."""
 
-    def setUp(self):
+    def setup_method(self):
         self.bank = Bank()
 
     def test_collect_positive_amount_increases_funds(self):
         """Collecting a positive amount should increase bank funds."""
         self.bank.collect(100)
-        self.assertEqual(self.bank.get_balance(), BANK_STARTING_FUNDS + 100)
+        assert self.bank.get_balance() == BANK_STARTING_FUNDS + 100
 
     def test_collect_negative_amount_is_ignored(self):
         """Docstring says negative amounts are ignored; balance should not drop."""
         self.bank.collect(-50)
-        self.assertEqual(self.bank.get_balance(), BANK_STARTING_FUNDS)
+        assert self.bank.get_balance() == BANK_STARTING_FUNDS
 
     def test_pay_out_zero_or_negative_returns_zero_without_change(self):
         """pay_out should return 0 and not change funds for non-positive input."""
         start = self.bank.get_balance()
-        self.assertEqual(self.bank.pay_out(0), 0)
-        self.assertEqual(self.bank.get_balance(), start)
-        self.assertEqual(self.bank.pay_out(-10), 0)
-        self.assertEqual(self.bank.get_balance(), start)
+        assert self.bank.pay_out(0) == 0
+        assert self.bank.get_balance() == start
+        assert self.bank.pay_out(-10) == 0
+        assert self.bank.get_balance() == start
 
     def test_pay_out_more_than_funds_raises(self):
         """pay_out should raise ValueError if amount exceeds available funds."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.bank.pay_out(self.bank.get_balance() + 1)
 
     def test_give_loan_ignores_non_positive_amount(self):
         """give_loan should ignore zero or negative amounts."""
         start_funds = self.bank.get_balance()
         self.bank.give_loan(type("P", (), {"name": "X", "add_money": lambda self, amt: None})(), 0)
-        self.assertEqual(self.bank.get_balance(), start_funds)
+        assert self.bank.get_balance() == start_funds
 
     def test_give_loan_positive_records_and_reduces_funds(self):
         """Positive loans should reduce bank funds and be tracked in summaries."""
@@ -60,11 +60,11 @@ class BankCoreTests(unittest.TestCase):
         start_funds = self.bank.get_balance()
         self.bank.give_loan(borrower, 100)
 
-        self.assertEqual(borrower.balance, 100)
+        assert borrower.balance == 100
         # Docstring says the bank's funds are reduced accordingly.
-        self.assertEqual(self.bank.get_balance(), start_funds - 100)
-        self.assertEqual(self.bank.loan_count(), 1)
-        self.assertEqual(self.bank.total_loans_issued(), 100)
+        assert self.bank.get_balance() == start_funds - 100
+        assert self.bank.loan_count() == 1
+        assert self.bank.total_loans_issued() == 100
 
     def test_give_loan_positive_amount_records_and_summarises(self):
         """Positive loans reduce bank funds, record loans, and appear in summary helpers."""
@@ -82,12 +82,12 @@ class BankCoreTests(unittest.TestCase):
         self.bank.give_loan(player, 100)
 
         # Bank funds reduced, player credited.
-        self.assertEqual(player.received, 100)
-        self.assertEqual(self.bank.get_balance(), start_funds - 100)
+        assert player.received == 100
+        assert self.bank.get_balance() == start_funds - 100
 
         # Loan helpers reflect the issued loan.
-        self.assertEqual(self.bank.loan_count(), 1)
-        self.assertEqual(self.bank.total_loans_issued(), 100)
+        assert self.bank.loan_count() == 1
+        assert self.bank.total_loans_issued() == 100
 
         # summary() and __repr__ should be callable without error, both
         # before and after any loans are issued.

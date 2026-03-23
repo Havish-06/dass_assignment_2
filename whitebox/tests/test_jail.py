@@ -1,6 +1,6 @@
 import os
 import sys
-import unittest
+import pytest
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 PACKAGE_ROOT = os.path.join(PROJECT_ROOT, "moneypoly")
@@ -12,10 +12,10 @@ from moneypoly import ui
 from moneypoly.config import JAIL_FINE
 
 
-class JailAndCardsTests(unittest.TestCase):
+class TestJailAndCards:
     """White-box tests for jail-turn branches and card edge cases."""
 
-    def setUp(self):
+    def setup_method(self):
         self.game = Game(["P1"])
         self.player = self.game.players[0]
 
@@ -59,9 +59,9 @@ class JailAndCardsTests(unittest.TestCase):
         finally:
             self._restore_from_jail_patch(originals)
 
-        self.assertFalse(self.player.jail.in_jail)
-        self.assertEqual(self.player.jail.cards, 0)
-        self.assertTrue(called["value"])
+        assert not self.player.jail.in_jail
+        assert self.player.jail.cards == 0
+        assert called["value"]
 
     def test_decline_all_options_increments_jail_turn_counter(self):
         """If player declines card and fine, only the jail turn counter advances."""
@@ -95,9 +95,9 @@ class JailAndCardsTests(unittest.TestCase):
             ui.confirm = original_confirm
             self.game.dice = original_dice
 
-        self.assertTrue(self.player.jail.in_jail)
-        self.assertEqual(self.player.jail.turns, start_turns + 1)
-        self.assertEqual(stub_dice.roll_calls, 0)
+        assert self.player.jail.in_jail
+        assert self.player.jail.turns == start_turns + 1
+        assert stub_dice.roll_calls == 0
 
     def test_jail_turn_voluntary_fine_deducts_from_player(self):
         """Paying the jail fine voluntarily should charge the player and move them."""        
@@ -113,10 +113,10 @@ class JailAndCardsTests(unittest.TestCase):
         finally:
             self._restore_from_jail_patch(originals)
 
-        self.assertFalse(self.player.jail.in_jail)
-        self.assertEqual(self.player.balance, start_balance - JAIL_FINE)
-        self.assertEqual(self.game.bank.get_balance(), start_bank + JAIL_FINE)
-        self.assertTrue(called["value"])
+        assert not self.player.jail.in_jail
+        assert self.player.balance == start_balance - JAIL_FINE
+        assert self.game.bank.get_balance() == start_bank + JAIL_FINE
+        assert called["value"]
 
     def test_jail_voluntary_fine_can_bankrupt_and_prevent_movement(self):
         """If paying the jail fine bankrupts the player, they should be eliminated and not move."""
@@ -133,13 +133,13 @@ class JailAndCardsTests(unittest.TestCase):
             self._restore_from_jail_patch(originals)
 
         # Player should have paid only what they had and then gone bankrupt.
-        self.assertEqual(self.player.balance, 0)
-        self.assertEqual(self.game.bank.get_balance(), start_bank + start_balance)
-        self.assertTrue(self.player.is_bankrupt())
-        self.assertTrue(self.player.is_eliminated)
-        self.assertNotIn(self.player, self.game.players)
+        assert self.player.balance == 0
+        assert self.game.bank.get_balance() == start_bank + start_balance
+        assert self.player.is_bankrupt()
+        assert self.player.is_eliminated
+        assert self.player not in self.game.players
         # No move should be attempted once the player is bankrupt.
-        self.assertFalse(called["value"])
+        assert not called["value"]
 
     def test_jail_mandatory_fine_bankruptcy_only_collects_available_cash(self):
         """Mandatory fine after three turns should only transfer existing cash if bankrupt."""
@@ -157,13 +157,13 @@ class JailAndCardsTests(unittest.TestCase):
         finally:
             self._restore_from_jail_patch(originals)
 
-        self.assertEqual(self.player.balance, 0)
-        self.assertEqual(self.game.bank.get_balance(), start_bank + start_balance)
-        self.assertTrue(self.player.is_bankrupt())
-        self.assertTrue(self.player.is_eliminated)
-        self.assertNotIn(self.player, self.game.players)
+        assert self.player.balance == 0
+        assert self.game.bank.get_balance() == start_bank + start_balance
+        assert self.player.is_bankrupt()
+        assert self.player.is_eliminated
+        assert self.player not in self.game.players
         # Mandatory bankrupt release should not attempt movement.
-        self.assertFalse(called["value"])
+        assert not called["value"]
 
     def test_jail_turn_mandatory_fine_after_three_turns(self):
         """After three skipped turns, the player must pay the fine and leave jail."""
@@ -180,10 +180,10 @@ class JailAndCardsTests(unittest.TestCase):
         finally:
             self._restore_from_jail_patch(originals)
 
-        self.assertFalse(self.player.jail.in_jail)
-        self.assertEqual(self.player.balance, start_balance - JAIL_FINE)
-        self.assertEqual(self.game.bank.get_balance(), start_bank + JAIL_FINE)
-        self.assertTrue(called["value"])
+        assert not self.player.jail.in_jail
+        assert self.player.balance == start_balance - JAIL_FINE
+        assert self.game.bank.get_balance() == start_bank + JAIL_FINE
+        assert called["value"]
 
     def test_unknown_card_action_does_not_change_balances(self):
         """An unknown card action should not crash or change balances."""
@@ -195,7 +195,7 @@ class JailAndCardsTests(unittest.TestCase):
         card = {"description": "Weird", "action": "not_a_real_action", "value": 999}
         apply_card(self.game, p1, card)
 
-        self.assertEqual((p1.balance, p2.balance), start_balances)
+        assert (p1.balance, p2.balance) == start_balances
 
 
 if __name__ == "__main__":

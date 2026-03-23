@@ -1,6 +1,6 @@
 import os
 import sys
-import unittest
+import pytest
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 PACKAGE_ROOT = os.path.join(PROJECT_ROOT, "moneypoly")
@@ -13,21 +13,21 @@ from moneypoly.property import PropertySpec, Property, PropertyGroup
 from moneypoly.config import JAIL_POSITION
 
 
-class PlayerTests(unittest.TestCase):
+class TestPlayer:
     """Branch-coverage tests for Player helpers and guards."""
 
     def test_add_and_deduct_negative_amount_raises(self):
         player = Player("P1")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             player.add_money(-10)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             player.deduct_money(-5)
 
     def test_go_to_jail_sets_position_and_status(self):
         player = Player("P1")
         player.go_to_jail()
-        self.assertEqual(player.position, JAIL_POSITION)
-        self.assertTrue(player.jail.in_jail)
+        assert player.position == JAIL_POSITION
+        assert player.jail.in_jail
 
     def test_properties_helpers_and_repr_and_status_line(self):
         player = Player("P1")
@@ -35,20 +35,20 @@ class PlayerTests(unittest.TestCase):
         prop = Property(spec)
 
         player.add_property(prop)
-        self.assertEqual(player.count_properties(), 1)
-        self.assertIn("P1", repr(player))
+        assert player.count_properties() == 1
+        assert "P1" in repr(player)
 
         # Removing a property should decrease the count again.
         player.remove_property(prop)
-        self.assertEqual(player.count_properties(), 0)
+        assert player.count_properties() == 0
 
         # Status line should include jailed tag when in jail.
         player.go_to_jail()
         status = player.status_line()
-        self.assertIn("[JAILED]", status)
+        assert "[JAILED]" in status
 
 
-class PropertyAndGroupTests(unittest.TestCase):
+class TestPropertyAndGroup:
     """Tests for Property, PropertySpec, and PropertyGroup branches."""
 
     def test_propertyspec_as_tuple_and_with_group(self):
@@ -57,16 +57,16 @@ class PropertyAndGroupTests(unittest.TestCase):
         spec.group = group
 
         tup = spec.as_tuple()
-        self.assertEqual(tup[0], "Test")
-        self.assertEqual(tup[1], 7)
-        self.assertEqual(tup[2], 120)
-        self.assertEqual(tup[3], 10)
-        self.assertEqual(tup[5], group)
+        assert tup[0] == "Test"
+        assert tup[1] == 7
+        assert tup[2] == 120
+        assert tup[3] == 10
+        assert tup[5] == group
 
         new_group = PropertyGroup("G2", "blue")
         spec2 = spec.with_group(new_group)
-        self.assertIs(spec2.group, new_group)
-        self.assertNotEqual(spec2.group, spec.group)
+        assert spec2.group is new_group
+        assert spec2.group != spec.group
 
     def test_property_mortgage_unmortgage_and_availability(self):
         group = PropertyGroup("G", "green")
@@ -75,26 +75,26 @@ class PropertyAndGroupTests(unittest.TestCase):
         prop = Property(spec)
 
         # Initially unowned, not mortgaged and available.
-        self.assertTrue(prop.is_available())
+        assert prop.is_available()
 
         # Mortgage pays out mortgage_value and becomes unavailable.
         first_payout = prop.mortgage()
-        self.assertEqual(first_payout, prop.mortgage_value)
-        self.assertFalse(prop.is_available())
+        assert first_payout == prop.mortgage_value
+        assert not prop.is_available()
         # Second mortgage attempt yields 0.
-        self.assertEqual(prop.mortgage(), 0)
+        assert prop.mortgage() == 0
 
         # Unmortgage returns 110% of mortgage value and restores availability.
         cost = prop.unmortgage()
-        self.assertEqual(cost, int(prop.mortgage_value * 1.1))
-        self.assertTrue(prop.is_available())
+        assert cost == int(prop.mortgage_value * 1.1)
+        assert prop.is_available()
         # Second unmortgage attempt yields 0.
-        self.assertEqual(prop.unmortgage(), 0)
+        assert prop.unmortgage() == 0
 
         # When a property is owned, it should no longer be available.
         owner = Player("Owner")
         prop.owner = owner
-        self.assertFalse(prop.is_available())
+        assert not prop.is_available()
 
     def test_group_ownership_rent_and_counts(self):
         group = PropertyGroup("Pair", "yellow")
@@ -106,36 +106,34 @@ class PropertyAndGroupTests(unittest.TestCase):
         prop2 = Property(spec2)
 
         # Group should have registered both properties.
-        self.assertEqual(group.size(), 2)
+        assert group.size() == 2
 
         owner = Player("Owner")
         prop1.owner = owner
         prop2.owner = None
 
         # Partial ownership: rent remains base, group not fully owned.
-        self.assertFalse(group.all_owned_by(owner))
-        self.assertEqual(prop1.get_rent(), prop1.base_rent)
+        assert not group.all_owned_by(owner)
+        assert prop1.get_rent() == prop1.base_rent
 
         # Full ownership doubles rent.
         prop2.owner = owner
-        self.assertTrue(group.all_owned_by(owner))
-        self.assertEqual(
-            prop1.get_rent(), prop1.base_rent * Property.FULL_GROUP_MULTIPLIER
-        )
+        assert group.all_owned_by(owner)
+        assert prop1.get_rent() == prop1.base_rent * Property.FULL_GROUP_MULTIPLIER
 
         counts = group.get_owner_counts()
-        self.assertEqual(counts.get(owner), 2)
+        assert counts.get(owner) == 2
         # Adding property twice via add_property should not duplicate.
         group.add_property(prop1)
-        self.assertEqual(group.size(), 2)
-        self.assertIn("PropertyGroup", repr(group))
+        assert group.size() == 2
+        assert "PropertyGroup" in repr(group)
 
         # Mortgaged properties in a full group should charge no rent.
         prop1.is_mortgaged = True
-        self.assertEqual(prop1.get_rent(), 0)
+        assert prop1.get_rent() == 0
 
 
-class BoardTests(unittest.TestCase):
+class TestBoard:
     """Tests for Board helper methods and tile classification."""
 
     def test_get_property_and_tile_types_and_specials(self):
@@ -143,54 +141,54 @@ class BoardTests(unittest.TestCase):
 
         # Known property from board setup.
         mediterranean = board.get_property_at(1)
-        self.assertIsNotNone(mediterranean)
-        self.assertEqual(mediterranean.position, 1)
+        assert mediterranean is not None
+        assert mediterranean.position == 1
 
         # Position 0 is Go and not a property.
-        self.assertIsNone(board.get_property_at(0))
+        assert board.get_property_at(0) is None
 
         # Non-property position returns None.
-        self.assertIsNone(board.get_property_at(12))
+        assert board.get_property_at(12) is None
 
         # Tile types: go, property, jail, blank, and a special tile.
-        self.assertEqual(board.get_tile_type(0), "go")
-        self.assertEqual(board.get_tile_type(1), "property")
-        self.assertEqual(board.get_tile_type(JAIL_POSITION), "jail")
-        self.assertEqual(board.get_tile_type(12), "blank")
+        assert board.get_tile_type(0) == "go"
+        assert board.get_tile_type(1) == "property"
+        assert board.get_tile_type(JAIL_POSITION) == "jail"
+        assert board.get_tile_type(12) == "blank"
 
         # SPECIAL_TILES are recognised as special.
         from moneypoly.board import SPECIAL_TILES  # pylint: disable=import-outside-toplevel
 
         for pos in SPECIAL_TILES:
-            self.assertTrue(board.is_special_tile(pos))
-        self.assertFalse(board.is_special_tile(12))
+            assert board.is_special_tile(pos)
+        assert not board.is_special_tile(12)
 
     def test_is_purchasable_owned_mortgaged_and_collections(self):
         board = Board()
         prop = board.get_property_at(1)
-        self.assertTrue(board.is_purchasable(1))
+        assert board.is_purchasable(1)
 
         # Mortgaged properties are not purchasable.
         prop.is_mortgaged = True
-        self.assertFalse(board.is_purchasable(1))
+        assert not board.is_purchasable(1)
 
         # Owned properties are not purchasable.
         prop.is_mortgaged = False
         owner = Player("Owner")
         prop.owner = owner
-        self.assertFalse(board.is_purchasable(1))
+        assert not board.is_purchasable(1)
 
         # Non-property tile is not purchasable.
-        self.assertFalse(board.is_purchasable(12))
+        assert not board.is_purchasable(12)
 
         owned_by_owner = board.properties_owned_by(owner)
-        self.assertIn(prop, owned_by_owner)
+        assert prop in owned_by_owner
 
         unowned = board.unowned_properties()
-        self.assertIn(prop, board.properties)  # sanity check
-        self.assertNotIn(prop, unowned)
+        assert prop in board.properties
+        assert prop not in unowned
 
-        self.assertIn("Board(", repr(board))
+        assert "Board(" in repr(board)
 
 
 if __name__ == "__main__":

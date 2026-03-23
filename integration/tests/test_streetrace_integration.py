@@ -1,6 +1,6 @@
 import os
 import sys
-import unittest
+import pytest
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 CODE_ROOT = os.path.join(PROJECT_ROOT, "code")
@@ -12,10 +12,10 @@ from streetrace.manager import StreetRaceManager  # type: ignore
 import streetrace.race_management as race_management_module  # type: ignore
 
 
-class RegistrationAndListingIntegrationTests(unittest.TestCase):
+class TestRegistrationAndListingIntegration:
     """Integration tests for crew registration and listing flows (CLI options 1, 5)."""
 
-    def setUp(self) -> None:
+    def setup_method(self) -> None:
         self.manager = StreetRaceManager()
 
     def test_register_crew_and_list_status(self) -> None:
@@ -31,16 +31,16 @@ class RegistrationAndListingIntegrationTests(unittest.TestCase):
 
         # Expect both crew members to be present with their roles.
         summary = "\n".join(lines)
-        self.assertIn("Alice", summary)
-        self.assertIn("driver", summary)
-        self.assertIn("Bob", summary)
-        self.assertIn("mechanic", summary)
+        assert "Alice" in summary
+        assert "driver" in summary
+        assert "Bob" in summary
+        assert "mechanic" in summary
 
 
-class InventoryAndCarsIntegrationTests(unittest.TestCase):
+class TestInventoryAndCarsIntegration:
     """Integration tests for adding cars and viewing inventory (CLI options 2, 11, 13, 14)."""
 
-    def setUp(self) -> None:
+    def setup_method(self) -> None:
         self.manager = StreetRaceManager()
 
     def test_add_car_and_list_cars(self) -> None:
@@ -50,8 +50,8 @@ class InventoryAndCarsIntegrationTests(unittest.TestCase):
         car2 = self.manager.inventory.add_car("StreetFox", speed_rating=6, durability=5)
 
         cars = self.manager.state.inventory.cars
-        self.assertIn(car1.car_id, cars)
-        self.assertIn(car2.car_id, cars)
+        assert car1.car_id in cars
+        assert car2.car_id in cars
 
     def test_add_spare_parts_and_tools(self) -> None:
         """Spare parts and tools should accumulate quantities in the inventory."""
@@ -62,14 +62,14 @@ class InventoryAndCarsIntegrationTests(unittest.TestCase):
         self.manager.inventory.add_tool("wrench", 4)
 
         inventory = self.manager.state.inventory
-        self.assertEqual(inventory.spare_parts.get("tyre"), 5)
-        self.assertEqual(inventory.tools.get("wrench"), 5)
+        assert inventory.spare_parts.get("tyre") == 5
+        assert inventory.tools.get("wrench") == 5
 
 
-class RaceFlowIntegrationTests(unittest.TestCase):
+class TestRaceFlowIntegration:
     """Integration tests for the create/select/assign/run race flow (CLI option 3)."""
 
-    def setUp(self) -> None:
+    def setup_method(self) -> None:
         self.manager = StreetRaceManager()
 
         # Seed one capable driver and one suitable car.
@@ -110,23 +110,23 @@ class RaceFlowIntegrationTests(unittest.TestCase):
         finally:
             race_management_module.random.random = original_random
 
-        self.assertEqual(race.status, RaceStatus.COMPLETED)
-        self.assertEqual(race.result, "win")
+        assert race.status == RaceStatus.COMPLETED
+        assert race.result == "win"
 
         # Cash balance should have increased by the prize money.
-        self.assertEqual(self.manager.state.inventory.cash_balance, 5_000)
+        assert self.manager.state.inventory.cash_balance == 5_000
 
         # A single result record should have been recorded.
-        self.assertEqual(len(self.manager.state.results), 1)
+        assert len(self.manager.state.results) == 1
         record = self.manager.state.results[0]
-        self.assertEqual(record.race_id, race.race_id)
-        self.assertEqual(record.driver_id, driver_id)
-        self.assertEqual(record.cash_delta, 5_000)
+        assert record.race_id == race.race_id
+        assert record.driver_id == driver_id
+        assert record.cash_delta == 5_000
 
         # The used car should now be marked damaged and unavailable.
         car = self.manager.state.inventory.cars[car_id]
-        self.assertTrue(car.damaged)
-        self.assertFalse(car.available)
+        assert car.damaged
+        assert not car.available
 
     def test_select_driver_and_car_fails_when_no_eligible_driver(self) -> None:
         """Race selection should fail if no driver meets the minimum skill requirement."""
@@ -139,7 +139,7 @@ class RaceFlowIntegrationTests(unittest.TestCase):
             min_car_speed=0,
         )
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.manager.races.select_driver_and_car(race.race_id)
 
     def test_select_driver_and_car_fails_when_no_eligible_car(self) -> None:
@@ -153,7 +153,7 @@ class RaceFlowIntegrationTests(unittest.TestCase):
             min_car_speed=10,
         )
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.manager.races.select_driver_and_car(race.race_id)
 
     def test_assign_driver_and_car_fails_for_damaged_car(self) -> None:
@@ -163,7 +163,7 @@ class RaceFlowIntegrationTests(unittest.TestCase):
         car = self.manager.inventory.add_car("Clunker", 5, 5)
         self.manager.maintenance.mark_car_damaged(car.car_id)
         
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.manager.races.assign_driver_and_car(race.race_id, self.driver_id, car.car_id)
 
     def test_assign_driver_and_car_fails_for_non_driver_role(self) -> None:
@@ -172,7 +172,7 @@ class RaceFlowIntegrationTests(unittest.TestCase):
         race = self.manager.races.create_race("Test Race", 1000)
         mechanic = self.manager.registration.register_member("Wrench", initial_role=Role.MECHANIC)
         
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.manager.races.assign_driver_and_car(race.race_id, mechanic.member_id, self.car_id)
 
     def test_race_loss_does_not_add_to_cash(self) -> None:
@@ -189,18 +189,18 @@ class RaceFlowIntegrationTests(unittest.TestCase):
         finally:
             race_management_module.random.random = original_random
             
-        self.assertEqual(race.result, "loss")
-        self.assertEqual(len(self.manager.state.results), 1)
+        assert race.result == "loss"
+        assert len(self.manager.state.results) == 1
         
         # Cash should remain unchanged (0 + 0).
-        self.assertEqual(self.manager.state.inventory.cash_balance, 0)
-        self.assertEqual(self.manager.state.results[0].cash_delta, 0)
+        assert self.manager.state.inventory.cash_balance == 0
+        assert self.manager.state.results[0].cash_delta == 0
 
 
-class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
+class TestMissionAndMaintenanceIntegration:
     """Integration tests for mission planning and maintenance rules (CLI options 7–10, 12)."""
 
-    def setUp(self) -> None:
+    def setup_method(self) -> None:
         self.manager = StreetRaceManager()
 
         # Seed one driver and one mechanic.
@@ -222,32 +222,32 @@ class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
         mission1 = self.manager.missions.create_mission("repairs", [Role.MECHANIC])
         self.manager.missions.assign_crew(mission1.mission_id, [self.driver.member_id])
         started = self.manager.missions.start_mission(mission1.mission_id)
-        self.assertFalse(started)
-        self.assertEqual(mission1.status, MissionStatus.PLANNED)
+        assert not started
+        assert mission1.status == MissionStatus.PLANNED
 
         # Mission 2: mechanic assigned but marked unavailable.
         self.manager.state.crew[self.mechanic.member_id].available = False
         mission2 = self.manager.missions.create_mission("repairs", [Role.MECHANIC])
         self.manager.missions.assign_crew(mission2.mission_id, [self.driver.member_id, self.mechanic.member_id])
         started = self.manager.missions.start_mission(mission2.mission_id)
-        self.assertFalse(started)
-        self.assertEqual(mission2.status, MissionStatus.PLANNED)
+        assert not started
+        assert mission2.status == MissionStatus.PLANNED
 
         # Mission 3: mechanic assigned and available, mission should start.
         self.manager.state.crew[self.mechanic.member_id].available = True
         mission3 = self.manager.missions.create_mission("repairs", [Role.MECHANIC])
         self.manager.missions.assign_crew(mission3.mission_id, [self.driver.member_id, self.mechanic.member_id])
         started = self.manager.missions.start_mission(mission3.mission_id)
-        self.assertTrue(started)
-        self.assertEqual(mission3.status, MissionStatus.IN_PROGRESS)
+        assert started
+        assert mission3.status == MissionStatus.IN_PROGRESS
 
     def test_mission_cannot_start_without_any_assigned_crew(self) -> None:
         """Missions must have at least one crew member assigned before starting."""
 
         mission = self.manager.missions.create_mission("unassigned", [Role.DRIVER])
         started = self.manager.missions.start_mission(mission.mission_id)
-        self.assertFalse(started)
-        self.assertEqual(mission.status, MissionStatus.PLANNED)
+        assert not started
+        assert mission.status == MissionStatus.PLANNED
 
     def test_repair_car_restores_availability_and_reduces_cash(self) -> None:
         """Repairing a damaged car should restore availability and deduct cash via inventory."""
@@ -260,9 +260,9 @@ class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
         self.manager.maintenance.repair_car(self.car_id, cost)
 
         car = self.manager.state.inventory.cars[self.car_id]
-        self.assertFalse(car.damaged)
-        self.assertTrue(car.available)
-        self.assertEqual(self.manager.state.inventory.cash_balance, start_cash - cost)
+        assert not car.damaged
+        assert car.available
+        assert self.manager.state.inventory.cash_balance == start_cash - cost
 
     def test_repair_car_with_insufficient_cash_raises_and_keeps_state(self) -> None:
         """Repairs that would overdraw cash should raise and not change car state."""
@@ -271,13 +271,13 @@ class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
         start_cash = self.manager.state.inventory.cash_balance
         cost = start_cash + 100 or 100
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.manager.maintenance.repair_car(self.car_id, cost)
 
         car = self.manager.state.inventory.cars[self.car_id]
-        self.assertTrue(car.damaged)
-        self.assertFalse(car.available)
-        self.assertEqual(self.manager.state.inventory.cash_balance, start_cash)
+        assert car.damaged
+        assert not car.available
+        assert self.manager.state.inventory.cash_balance == start_cash
 
     def test_mission_cannot_start_with_partial_roles(self) -> None:
         """Missions cannot start if they require multiple roles but only partial roles are assigned."""
@@ -287,8 +287,8 @@ class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
         self.manager.missions.assign_crew(mission.mission_id, [self.driver.member_id])
         started = self.manager.missions.start_mission(mission.mission_id)
         
-        self.assertFalse(started)
-        self.assertEqual(mission.status, MissionStatus.PLANNED)
+        assert not started
+        assert mission.status == MissionStatus.PLANNED
 
     def test_repair_undamaged_car_raises_error(self) -> None:
         """Repairing a car that is not damaged should raise a ValueError and not deduct cash."""
@@ -296,13 +296,13 @@ class MissionAndMaintenanceIntegrationTests(unittest.TestCase):
         self.manager.inventory.update_cash(1000)
         undamaged_car = self.manager.inventory.add_car("Pristine", speed_rating=5, durability=5)
         
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.manager.maintenance.repair_car(undamaged_car.car_id, 300)
             
-        self.assertEqual(self.manager.state.inventory.cash_balance, 1000)
+        assert self.manager.state.inventory.cash_balance == 1000
 
 
-class ReportingOverviewIntegrationTests(unittest.TestCase):
+class TestReportingOverviewIntegration:
     """Integration test for the high-level overview report (CLI option 4)."""
 
     def test_generate_overview_reflects_state(self) -> None:
@@ -338,9 +338,9 @@ class ReportingOverviewIntegrationTests(unittest.TestCase):
         overview = manager.reporting.generate_overview()
 
         # Overview string should mention races, crew count, and cash balance.
-        self.assertIn("Races:", overview)
-        self.assertIn("Crew members:", overview)
-        self.assertIn("Cash balance:", overview)
+        assert "Races:" in overview
+        assert "Crew members:" in overview
+        assert "Cash balance:" in overview
 
 
 if __name__ == "__main__":

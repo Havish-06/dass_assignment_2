@@ -1,6 +1,6 @@
 import os
 import sys
-import unittest
+import pytest
 
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
@@ -20,10 +20,10 @@ from moneypoly.config import (
 )
 
 
-class TaxesAndRentTests(unittest.TestCase):
+class TestTaxesAndRent:
     """White-box tests for tax tiles and rent bankruptcy behaviour."""
 
-    def setUp(self):
+    def setup_method(self):
         self.game = Game(["P1", "P2"])
         self.p1, self.p2 = self.game.players
 
@@ -38,9 +38,9 @@ class TaxesAndRentTests(unittest.TestCase):
         starting = self.p1.balance
         self._land_on(self.p1, INCOME_TAX_POSITION)
 
-        self.assertEqual(self.p1.balance, starting - INCOME_TAX_AMOUNT)
-        self.assertIn(self.p1, self.game.players)
-        self.assertFalse(self.p1.is_eliminated)
+        assert self.p1.balance == starting - INCOME_TAX_AMOUNT
+        assert self.p1 in self.game.players
+        assert not self.p1.is_eliminated
 
     def test_income_tax_can_bankrupt_and_eliminate_player(self):
         """If a player cannot afford income tax, they should go bankrupt and be removed."""
@@ -51,9 +51,9 @@ class TaxesAndRentTests(unittest.TestCase):
         self._land_on(self.p1, INCOME_TAX_POSITION)
 
         # Player pays only what they have and ends at zero.
-        self.assertEqual(self.p1.balance, 0)
-        self.assertEqual(self.game.bank.get_balance(), start_bank + starting_balance)
-        self.assertNotIn(self.p1, self.game.players)
+        assert self.p1.balance == 0
+        assert self.game.bank.get_balance() == start_bank + starting_balance
+        assert self.p1 not in self.game.players
 
     def test_luxury_tax_can_bankrupt_and_eliminate_player(self):
         """Luxury tax should also be able to bankrupt and eliminate a player."""
@@ -63,25 +63,25 @@ class TaxesAndRentTests(unittest.TestCase):
 
         self._land_on(self.p1, LUXURY_TAX_POSITION)
 
-        self.assertEqual(self.p1.balance, 0)
-        self.assertEqual(self.game.bank.get_balance(), start_bank + starting_balance)
-        self.assertNotIn(self.p1, self.game.players)
+        assert self.p1.balance == 0
+        assert self.game.bank.get_balance() == start_bank + starting_balance
+        assert self.p1 not in self.game.players
 
     def test_go_to_jail_tile_sends_player_to_jail(self):
         """Landing on the Go To Jail tile should send the player directly to jail."""
         self._land_on(self.p1, GO_TO_JAIL_POSITION)
 
-        self.assertTrue(self.p1.jail.in_jail)
-        self.assertEqual(self.p1.position, JAIL_POSITION)
+        assert self.p1.jail.in_jail
+        assert self.p1.position == JAIL_POSITION
 
     def test_free_parking_tile_has_no_effect(self):
         """Landing on Free Parking should not change balance or jail status."""
         starting_balance = self.p1.balance
         self._land_on(self.p1, FREE_PARKING_POSITION)
 
-        self.assertEqual(self.p1.balance, starting_balance)
-        self.assertFalse(self.p1.jail.in_jail)
-        self.assertIn(self.p1, self.game.players)
+        assert self.p1.balance == starting_balance
+        assert not self.p1.jail.in_jail
+        assert self.p1 in self.game.players
 
 
 if __name__ == "__main__":

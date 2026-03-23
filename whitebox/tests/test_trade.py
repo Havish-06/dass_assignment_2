@@ -1,6 +1,6 @@
 import os
 import sys
-import unittest
+import pytest
 
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
@@ -11,10 +11,10 @@ if PACKAGE_ROOT not in sys.path:
 from moneypoly.game import Game
 
 
-class TradeAndRentTests(unittest.TestCase):
+class TestTradeAndRent:
     """White-box tests for rent and trade branches."""
 
-    def setUp(self):
+    def setup_method(self):
         self.game = Game(["Seller", "Buyer"])
         self.seller, self.buyer = self.game.players
 
@@ -30,7 +30,7 @@ class TradeAndRentTests(unittest.TestCase):
 
         self.game.pay_rent(self.buyer, self.prop)
 
-        self.assertEqual(self.buyer.balance, starting_balance)
+        assert self.buyer.balance == starting_balance
 
     def test_pay_rent_transfers_to_owner(self):
         """When rent is due, it should be transferred to the property's owner."""
@@ -42,8 +42,8 @@ class TradeAndRentTests(unittest.TestCase):
 
         self.game.pay_rent(self.buyer, self.prop)
 
-        self.assertEqual(self.buyer.balance, starting_buyer - rent)
-        self.assertEqual(self.seller.balance, starting_seller + rent)
+        assert self.buyer.balance == starting_buyer - rent
+        assert self.seller.balance == starting_seller + rent
 
     def test_pay_rent_can_bankrupt_tenant(self):
         """If the tenant cannot afford rent, they should go bankrupt and be eliminated."""
@@ -55,9 +55,9 @@ class TradeAndRentTests(unittest.TestCase):
         self.game.pay_rent(self.buyer, self.prop)
 
         # Buyer should now be bankrupt and removed from the game.
-        self.assertTrue(self.buyer.is_bankrupt())
-        self.assertTrue(self.buyer.is_eliminated)
-        self.assertNotIn(self.buyer, self.game.players)
+        assert self.buyer.is_bankrupt()
+        assert self.buyer.is_eliminated
+        assert self.buyer not in self.game.players
 
     def test_trade_fails_when_seller_does_not_own_property(self):
         """Trade must fail if the seller does not actually own the property."""
@@ -65,8 +65,8 @@ class TradeAndRentTests(unittest.TestCase):
 
         success = self.game.trade(self.seller, self.buyer, self.prop, 100)
 
-        self.assertFalse(success)
-        self.assertIsNone(self.prop.owner)
+        assert not success
+        assert self.prop.owner is None
 
     def test_trade_fails_when_buyer_cannot_afford(self):
         """Trade must fail if the buyer lacks enough cash."""
@@ -75,10 +75,10 @@ class TradeAndRentTests(unittest.TestCase):
 
         success = self.game.trade(self.seller, self.buyer, self.prop, price)
 
-        self.assertFalse(success)
+        assert not success
         # Balances and ownership unchanged.
-        self.assertEqual(self.buyer.balance, price - 1)
-        self.assertIs(self.prop.owner, self.seller)
+        assert self.buyer.balance == price - 1
+        assert self.prop.owner is self.seller
 
     def test_trade_succeeds_and_transfers_property_and_cash(self):
         """Successful trade transfers property and deducts buyer's cash."""
@@ -88,14 +88,14 @@ class TradeAndRentTests(unittest.TestCase):
 
         success = self.game.trade(self.seller, self.buyer, self.prop, price)
 
-        self.assertTrue(success)
-        self.assertIs(self.prop.owner, self.buyer)
-        self.assertIn(self.prop, self.buyer.properties)
-        self.assertNotIn(self.prop, self.seller.properties)
-        self.assertEqual(self.buyer.balance, 500 - price)
+        assert success
+        assert self.prop.owner is self.buyer
+        assert self.prop in self.buyer.properties
+        assert self.prop not in self.seller.properties
+        assert self.buyer.balance == 500 - price
         # Seller's cash does not automatically increase; trade is modelled
         # as a transfer between players without touching the bank.
-        self.assertEqual(self.seller.balance, starting_seller_balance)
+        assert self.seller.balance == starting_seller_balance
 
 
 if __name__ == "__main__":
