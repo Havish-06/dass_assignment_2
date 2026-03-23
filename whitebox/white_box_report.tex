@@ -23,8 +23,6 @@ The Control Flow Graph (CFG) was drawn by hand for the core of the game logic, f
   \item \texttt{Game.auction\_property}, \texttt{Game.trade}
   \item Card handlers in \texttt{apply\_card} (e.g. \texttt{move\_to}, \texttt{birthday}, \texttt{collect\_from\_all})
 
-    \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
-
 \end{itemize}
 
 Each basic block (straight-line code with no internal branches) is represented as a node, labelled with a short description such as ``P1: start of \texttt{play\_turn}'', ``M3: tile type is \texttt{income\_tax}'', or ``J2: voluntary jail fine?''. Directed edges indicate control flow between these nodes. For example:
@@ -36,13 +34,9 @@ Each basic block (straight-line code with no internal branches) is represented a
     \item the triple-doubles path, where \texttt{doubles\_streak} reaches~3 and the player is sent directly to jail;
     \item the normal movement path, where a single roll leads to \texttt{\_move\_and\_resolve}, and then either an extra turn (doubles) or \texttt{advance\_turn} (non-doubles).
   
-    \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
-
 \end{itemize}
   \item In \texttt{\_move\_and\_resolve}, a decision node branches on the tile type: \texttt{go\_to\_jail}, \texttt{income\_tax}, \texttt{luxury\_tax}, \texttt{free\_parking}, \texttt{chance}, \texttt{community\_chest}, \texttt{railroad}, and \texttt{property}, before ending at a node that calls \texttt{\_check\_bankruptcy}.
   \item Separate subgraphs were drawn for \texttt{handle\_property\_tile} and \texttt{\_handle\_jail\_turn}, capturing user choices (buy/auction/skip, yes/no to fines, use card or not) and their effects on game state.
-
-    \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
 
 \end{itemize}
 
@@ -67,8 +61,6 @@ Key improvements from these later refactoring iterations are summarised below.
     \item In the mortgage and unmortgage functions, nested \texttt{if}/\texttt{else} ladders were simplified into clear sequential checks (ownership, mortgage status, affordability).  Each failure mode now returns early with a single responsibility, which matches one row in the branch--test map.
     \item The financial operations in tax tiles, rent, card payments and jail fines were rephrased in terms of helper methods like \texttt{Player.deduct\_money}, \texttt{Player.add\_money} and \texttt{Bank.collect}.  Together with later bug fixes (captured as ``Error~\#'' commits), this made it impossible to silently push a player below zero without going through the shared bankruptcy check.
   
-    \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
-
 \end{itemize}
 
   \item \textbf{Clarifying stateful components.}  Iterations~26 and~28 specifically targeted overgrown classes by reducing the number of instance attributes on \texttt{Game} and \texttt{Player} to seven each.  Attributes like \texttt{doubles\_streak} in \texttt{Dice}, jail-related state in \texttt{Player} and \texttt{Game}, and mortgage flags in \texttt{Property} were clearly initialised, documented and accessed through helper methods.  For example, the jail turn handling was concentrated in \texttt{Game.\_handle\_jail\_turn} instead of being spread across \texttt{play\_turn}, and board ownership queries were consistently routed through \texttt{Board.get\_property\_at} and \texttt{Board.is\_purchasable}.  This reduced hidden coupling and made it much easier to write targeted tests for jail, rent, auctions and triple doubles.
@@ -79,11 +71,7 @@ Key improvements from these later refactoring iterations are summarised below.
     \item User-interface concerns (printing menus, standings, board ownership) were confined to the UI layer and to menu helper methods, while pure game-state changes live in the \texttt{Game}, \texttt{Player}, \texttt{Board}, \texttt{Property} and \texttt{Bank} classes.  This separation allowed the tests to exercise logic branches without asserting on text output.
     \item Supporting classes like \texttt{CardDeck}, \texttt{Dice} and \texttt{PropertyGroup} were given small, well-defined APIs so that their behaviour (reshuffling, doubles streaks, group rent calculation) can be tested independently of the rest of the game.
   
-    \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
-
 \end{itemize}
-
-    \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
 
 \end{itemize}
 
@@ -96,10 +84,8 @@ White-box tests were designed using the CFG and the refactored code from Section
 
 \begin{itemize}
   \item to cover all important branches (every decision path) in the game logic;
-  \item to exercise key variable states that affect behaviour (e.g. balances around zero, ownership status, jail turns, doubles streak);
-  \item to include relevant edge cases such as exact-boundary values (exact price, exact fine), zero values, and unusual player inputs.
-
-    \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
+  \item to exercise key variable states that affect behaviour. For example, testing \texttt{player.balance} crossing \$0 during taxes/rent (to verify bankruptcy triggers), checking \texttt{prop.owner} state evaluations, pushing \texttt{player.jail.turns} to the 3-turn mandatory fine limit, and tracking \texttt{dice.doubles\_streak} exactly hitting 3 to trigger jail;
+  \item to include relevant edge cases. This includes testing exact-boundary affordability (e.g., \texttt{player.balance == prop.price}), injecting zero or negative \texttt{amount} values into \texttt{Bank.collect} (which uncovered refund bugs), testing empty data structures (drawing when \texttt{CardDeck.cards\_remaining == 0}), and sending unusual player inputs (such as typing invalid strings like \texttt{"x"} during property tile prompts).
 
 \end{itemize}
 
@@ -111,8 +97,6 @@ The tests are organised by feature: turn management, movement and tiles, propert
   \item \texttt{handle\_property\_tile} treating any non-``b''/``a'' input as an implicit skip; tests forced the logic to require explicit ``s'' to skip and to handle invalid inputs gracefully.
   \item Income/luxury tax and jail fines originally allowed the bank to collect the full tax or fine even when the player had less money, leaving the player negative and the bank with more money than existed.  New tests required the bank to collect only the player's remaining balance; the code was fixed accordingly.
   \item Several guard paths in jail and trade menus (no other players, no properties, invalid indices) which were previously untested and are now covered by explicit tests.
-
-    \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
 
 \end{itemize}
 
@@ -206,8 +190,6 @@ Finally, for movement-specific player state, \texttt{Player.move} edge cases are
 \begin{itemize}
   \item \texttt{test\_move\_past\_go\_awards\_salary} (wrapping around the board and passing Go once), and
   \item \texttt{test\_move\_lands\_exactly\_on\_go\_awards\_salary} (landing exactly on Go).
-
-    \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
 
 \end{itemize}
 
@@ -387,9 +369,8 @@ To ensure the game reliably handles every possible player action and edge case, 
     \item \textbf{Bank \& Auction Tests (\texttt{test\_bank.py}, \texttt{test\_game.py}):} Needed to prevent the bank from accepting invalid inputs (like negative loans) and to make sure auctions reject bids players can't afford. \textit{Errors Found}: (Error 4 \& 8) The bank previously accepted negative amounts which acted as accidental refunds, and allowed unmortgaging properties for free if the player had no money.
     
     \item \textbf{Dice \& Deck Tests (\texttt{test\_dice.py}):} Needed to make sure that the deck reshuffles correctly when empty, rather than crashing the game. \textit{Errors Found}: (Error 6 \& 9) Drawing from an empty deck previously crashed or returned \texttt{None} indefinitely instead of reshuffling the discard pile automatically.
-
+    
     \item \textbf{Invalid Input Handling Tests (\texttt{test\_movement.py}):} Needed to ensure that users cannot accidentally skip their turn by fat-fingering a key when asked to buy/auction/skip properties. \textit{Errors Found}: (Error 14) The game previously accepted any random symbol and defaulted to skipping. The while loop fix guarantees they provide valid intent.
-
 \end{itemize}
 
 By covering all these edge cases (zero values, large inputs, unexpected negative amounts), the test suite guarantees that every \texttt{if/else} branch behaves correctly under stress, identifying and resolving the 14 critical logical errors listed above. No additional errors were found beyond the 14 documented, as these tests now achieve 100\% branch coverage.
