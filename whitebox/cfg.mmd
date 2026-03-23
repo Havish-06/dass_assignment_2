@@ -1,0 +1,138 @@
+```mermaid
+flowchart TD
+    %% Styling for better readability
+    classDef mainLoop fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px,color:#000
+    classDef resolve fill:#f1f8e9,stroke:#8bc34a,stroke-width:2px,color:#000
+    classDef property fill:#fff3e0,stroke:#ff9800,stroke-width:2px,color:#000
+    classDef jail fill:#fce4ec,stroke:#e91e63,stroke-width:2px,color:#000
+
+    %% Entry Point
+    START([Start Game Loop]) --> P1
+
+    %% ----------------------------------------------------
+    %% Game.play_turn Subgraph
+    %% ----------------------------------------------------
+    subgraph play_turn [Game.play_turn]
+        P1{Player in Jail?}
+        P1 -- "Yes" --> J1[Call _handle_jail_turn]
+        J1 --> P2[Call advance_turn]
+        
+        P1 -- "No" --> P3[Roll Dice: Update doubles_streak]
+        P3 --> P4{doubles_streak >= 3?}
+        
+        P4 -- "Yes" --> P5[Go to Jail, End Turn]
+        P5 --> P2
+        
+        P4 -- "No" --> P6[Call _move_and_resolve]
+        P6 --> P7{Dice Rolled Doubles?}
+        
+        P7 -- "Yes" --> P8[Keep current turn active]
+        P8 --> PEND([Return to Loop])
+
+        P7 -- "No" --> P9[Call advance_turn]
+        P9 --> PEND
+        P2 --> PEND
+    end
+    class play_turn mainLoop
+    
+    %% ----------------------------------------------------
+    %% Game._move_and_resolve Subgraph
+    %% ----------------------------------------------------
+    subgraph move_resolve [Game._move_and_resolve]
+        M1[Calculate new position board wrap] --> M2{Did Player Pass Go?}
+        M2 -- "Yes" --> M3[Award Go Salary]
+        M3 --> M4[Identify Tile Type at Position]
+        M2 -- "No" --> M4
+        
+        M4 --> M5{Switch on Tile Type}
+        M5 -- "go_to_jail" --> M6[Move directly to Jail]
+        M5 -- "income_tax" --> M7[Deduct up to balance]
+        M5 -- "luxury_tax" --> M8[Deduct up to balance]
+        M5 -- "chance / chest" --> M9[Draw Card & Apply Effect]
+        M5 -- "free_parking" --> M10[No operation]
+        M5 -- "property" --> M11[Call handle_property_tile]
+        
+        M6 --> M12[Call _check_bankruptcy]
+        M7 --> M12
+        M8 --> M12
+        M9 --> M12
+        M10 --> M12
+        M11 --> M12
+        
+        M12 --> MEND([Return to play_turn])
+    end
+    class move_resolve resolve
+    
+    %% Implicit Call Mappings (Connecting Subgraphs visually)
+    P6 -.->|Calls| M1
+
+    %% ----------------------------------------------------
+    %% Game.handle_property_tile Subgraph
+    %% ----------------------------------------------------
+    subgraph handle_property [Game.handle_property_tile]
+        H1[Retrieve Property Object] --> H2{Property has Owner?}
+        
+        H2 -- "Yes, Current Player" --> HEND([Return])
+        H2 -- "Yes, Other Player" --> H3{Is Property Mortgaged?}
+        
+        H3 -- "Yes" --> HEND
+        H3 -- "No" --> H4[Call pay_rent]
+        H4 --> HEND
+        
+        H2 -- "No (Unowned)" --> H5[Prompt: Buy, Auction, Skip]
+        H5 --> H6{Validate Input}
+        
+        H6 -- "Invalid Input" --> H7[Print Warning]
+        H7 --> H5
+        
+        H6 -- "'b' (Buy)" --> H8[Call buy_property]
+        H6 -- "'a' (Auction)" --> H9[Call auction_property]
+        H6 -- "'s' (Skip)" --> H10[Do nothing]
+        
+        H8 --> HEND
+        H9 --> HEND
+        H10 --> HEND
+    end
+    class handle_property property
+
+    %% Linking _move_and_resolve to property logic
+    M11 -.->|Calls| H1
+
+    %% ----------------------------------------------------
+    %% Game._handle_jail_turn Subgraph
+    %% ----------------------------------------------------
+    subgraph handle_jail [Game._handle_jail_turn]
+        J2{Has 'Get Out of Jail' Card?}
+        J2 -- "Yes" --> J3[Prompt: Use Card?]
+        
+        J3 -- "'y'" --> J4[Discard Card, Set free, Roll normally]
+        J4 --> JEND([Return])
+        
+        J3 -- "'n'" --> J5
+        J2 -- "No" --> J5[Prompt: Pay $50 Fine?]
+        
+        J5 --> J6{User Input}
+        J6 -- "'y' (Pay)" --> J7[Deduct $50]
+        J7 --> J8{Bankrupt?}
+        
+        J8 -- "Yes" --> JEND
+        J8 -- "No" --> J9[Set free, Roll normally]
+        J9 --> JEND
+        
+        J6 -- "'n' (Wait)" --> J10[Increment jail_turns counter]
+        J10 --> J11{jail_turns == 3?}
+        
+        J11 -- "No" --> J12[Skip this turn completely]
+        J12 --> JEND
+        
+        J11 -- "Yes" --> J13[Force $50 Payment]
+        J13 --> J14{Bankrupt?}
+        J14 -- "Yes" --> JEND
+        J14 -- "No" --> J15[Set free, Roll normally]
+        J15 --> JEND
+    end
+    class handle_jail jail
+
+    %% Linking play_turn to Jail logic
+    J1 -.->|Calls| J2
+```
