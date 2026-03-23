@@ -341,7 +341,3 @@ class TestReportingOverviewIntegration:
         assert "Races:" in overview
         assert "Crew members:" in overview
         assert "Cash balance:" in overview
-
-
-if __name__ == "__main__":
-    unittest.main()

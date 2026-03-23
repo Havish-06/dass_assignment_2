@@ -170,7 +170,3 @@ class TestCardDeck:
         rep = repr(deck)
         assert isinstance(rep, str)
         assert "CardDeck" in rep
-
-
-if __name__ == "__main__":
-    unittest.main()

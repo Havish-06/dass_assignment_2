@@ -166,7 +166,3 @@ class TestBirthdayAndCollectFromAllBankruptcy:
         called_player, called_prop = calls[0]
         assert called_player is player
         assert called_prop is target_prop
-
-
-if __name__ == "__main__":
-    unittest.main()

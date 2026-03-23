@@ -588,7 +588,3 @@ class TestMainModule:
 
             with mock.patch.object(main_module, "Game", side_effect=raising_init):
                 main_module.main()  # should not raise
-
-
-if __name__ == "__main__":
-    unittest.main()

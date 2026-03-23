@@ -196,7 +196,3 @@ class TestJailAndCards:
         apply_card(self.game, p1, card)
 
         assert (p1.balance, p2.balance) == start_balances
-
-
-if __name__ == "__main__":
-    unittest.main()

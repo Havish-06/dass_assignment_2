@@ -170,8 +170,3 @@ class TestWinnerMovementAndPurchase:
         assert prop.owner is None
         assert not called["buy"]
         assert not called["auction"]
-
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -97,7 +97,3 @@ class TestBankCore:
 
         _ = repr(self.bank)
         self.bank.summary()
-
-
-if __name__ == "__main__":
-    unittest.main()

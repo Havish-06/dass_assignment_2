@@ -189,7 +189,3 @@ class TestBoard:
         assert prop not in unowned
 
         assert "Board(" in repr(board)
-
-
-if __name__ == "__main__":
-    unittest.main()

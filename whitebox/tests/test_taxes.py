@@ -82,7 +82,3 @@ class TestTaxesAndRent:
         assert self.p1.balance == starting_balance
         assert not self.p1.jail.in_jail
         assert self.p1 in self.game.players
-
-
-if __name__ == "__main__":
-    unittest.main()

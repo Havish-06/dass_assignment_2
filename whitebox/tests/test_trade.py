@@ -96,7 +96,3 @@ class TestTradeAndRent:
         # Seller's cash does not automatically increase; trade is modelled
         # as a transfer between players without touching the bank.
         assert self.seller.balance == starting_seller_balance
-
-
-if __name__ == "__main__":
-    unittest.main()
