@@ -1,61 +1,37 @@
 ```mermaid
-flowchart TD
+flowchart LR
     %% Base styling
-    classDef engine fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef core fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
     classDef module fill:#f1f8e9,stroke:#388e3c,stroke-width:2px,color:#000
     classDef io fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
 
-    %% Main Nodes (One per File / Class)
-    Game((Game Engine))
-    UI[(UI / Interaction)]
-    Player[Player Module]
-    Dice[Dice Module]
-    Board[Board Module]
-    Property[Property Module]
-    CardDeck[Card / Deck Logic]
-    Bank[Bank Module]
+    %% Main Nodes (Exactly matching Class names)
+    Game[Game]
+    UI[UI]
+    Player[Player]
+    Dice[Dice]
+    Board[Board]
+    Property[Property]
+    CardDeck[CardDeck]
+    Bank[Bank]
 
-    class Game engine
+    class Game core
     class UI io
     class Player,Dice,Board,Property,CardDeck,Bank module
 
-    %% Core Game Loop Initiation
-    Game -- "[print_banner, interactive_menu, display standings]" --> UI
+    %% Bi-directional or direct interactions
+    Game -->|"[print_banner, interactive_menu]"| UI
+    UI -->|"[user inputs]"| Game
     
-    %% Pre-roll interactions
-    UI -- "[user inputs (trade, mortgage, skip)]" --> Game
-    
-    %% Jail and Movement Logic
-    Game -- "[check in_jail status, jail turns]" --> Player
-    Player -- "[trigger jail release rules]" --> Game
+    Game -->|"[roll]"| Dice
+    Game -->|"[move, deduct_money, bankrupt?]"| Player
+    Game -->|"[get_tile_type, get_property_at]"| Board
+    Game -->|"[draw_card]"| CardDeck
+    Game -->|"[check owner, check mortgage]"| Property
+    Game -->|"[collect, pay_out, give_loan]"| Bank
 
-    Game -- "[roll()]" --> Dice
-    Dice -- "[return roll results, doubles streak]" --> Game
-    
-    Game -- "[move(steps), determine new position]" --> Player
-    
-    %% Evaluating Board State
-    Game -- "[get_tile_type(pos)]" --> Board
-    Board -- "[returns specific tile ID]" --> Game
-    
-    %% Conditional Branching across Modules based on Tile Types
-    Game -- "[if chance/chest: draw()]" --> CardDeck
-    CardDeck -- "[apply_card directly alters balance]" --> Player
-    CardDeck -- "[apply_card pays/collects]" --> Bank
-    
-    Game -- "[if property: get_property_at(pos)]" --> Board
-    Board -- "[returns Property object]" --> Property
-    
-    Game -- "[check owner, check mortgage_status]" --> Property
-    Property -- "[returns true/false logic]" --> Game
-    
-    %% Asset Resolution (Purchasing, Rent, Auction)
-    Game -- "[prompt: Buy/Auction/Skip]" --> UI
-    Game -- "[deduct_money($rent), add_property(prop)]" --> Player
-    Game -- "[collect(money), pay_out(money)]" --> Bank
-    Game -- "[set_owner(Player), set_mortgaged(bool)]" --> Property
-    
-    %% End of Turn Mechanics
-    Game -- "[check_bankruptcy(), is_bankrupt()]" --> Player
-    Player -- "[marks is_eliminated]" --> Game
+    %% Secondary paths branching out across the state
+    Board -->|"[returns Property object]"| Property
+    CardDeck -->|"[apply_card: add/deduct money]"| Player
+    CardDeck -->|"[apply_card: pay/collect money]"| Bank
 ```
