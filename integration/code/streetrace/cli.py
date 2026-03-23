@@ -4,70 +4,12 @@ from __future__ import annotations
 
 Two main entry points:
 - an interactive text menu ("real" CLI for manual use)
-- a fixed demo scenario (useful for tests and examples)
 """
 
 import sys
 
 from .domain import Role, SystemState
 from .manager import StreetRaceManager
-
-
-def initialise_demo_manager() -> StreetRaceManager:
-    """Seed a demo configuration and return a ready-to-use manager."""
-
-    manager = StreetRaceManager()
-
-    # Seed with a small demo configuration used by integration tests.
-    alice = manager.registration.register_member("Alice", initial_role=Role.DRIVER)
-    manager.crew.set_skill(alice.member_id, Role.DRIVER, 5)
-
-    bob = manager.registration.register_member("Bob", initial_role=Role.MECHANIC)
-    manager.crew.set_skill(bob.member_id, Role.MECHANIC, 4)
-
-    manager.inventory.update_cash(10_000)
-    manager.inventory.add_car(model="NightRider", speed_rating=8, durability=7)
-    manager.inventory.add_car(model="StreetFox", speed_rating=6, durability=5)
-
-    return manager
-
-
-def initialise_demo_state() -> SystemState:
-    """Backward-compatible helper that returns only the SystemState."""
-
-    return initialise_demo_manager().state
-
-
-def run_demo() -> None:
-    """Run a tiny non-interactive demo scenario using the manager.
-
-    This is mainly to exercise cross-module interactions:
-    - register crew
-    - add cars
-    - create a race and auto-select driver and car
-    - run race and update inventory/results
-    - create a mission and attempt to start it
-    """
-
-    manager = initialise_demo_manager()
-
-    # Create and schedule a race.
-    race = manager.races.create_race(
-        name="Downtown Dash",
-        prize_money=5_000,
-        min_driver_skill=3,
-        min_car_speed=5,
-    )
-    driver_id, car_id = manager.races.select_driver_and_car(race.race_id)
-    manager.races.assign_driver_and_car(race.race_id, driver_id, car_id)
-    manager.races.run_race(race.race_id)
-
-    # Plan a mission that requires a mechanic.
-    mission = manager.missions.create_mission("post-race repairs", [Role.MECHANIC])
-    manager.missions.assign_crew(mission.mission_id, [2])  # Bob
-    manager.missions.start_mission(mission.mission_id)
-
-    print(manager.reporting.generate_overview())
 
 
 def _prompt(text: str) -> str:
@@ -78,7 +20,7 @@ def run_interactive() -> None:
     """Run a small interactive CLI around StreetRaceManager.
 
     This gives you a *functioning system* you can drive from the
-    terminal instead of just a hard-coded demo.
+    terminal.
     """
 
     manager = StreetRaceManager()
@@ -108,7 +50,7 @@ def run_interactive() -> None:
             break
 
         if choice == "1":
-            name = _prompt("Crew name: ")
+            name = _prompt("Crew member name: ")
             role_str = _prompt("Initial role (driver/mechanic/strategist/leader or blank): ")
             role = None
             if role_str:
@@ -308,11 +250,7 @@ def run_interactive() -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = list(argv) if argv is not None else sys.argv[1:]
-    if "--demo" in argv:
-        run_demo()
-    else:
-        run_interactive()
+    run_interactive()
 
 
 if __name__ == "__main__":  # pragma: no cover

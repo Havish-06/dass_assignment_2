@@ -4,7 +4,6 @@ This file now shows **only** the flows that are reachable via the
 command-line interface in `cli.py`:
 
 - `python3 -m integration.code.streetrace.cli` → interactive menu
-- `python3 -m integration.code.streetrace.cli --demo` → fixed demo
 
 Notation:
 - Each indent (`->`) means a call into another method.
@@ -173,26 +172,3 @@ run_interactive()
   -> InventoryModule.add_tool(name, quantity)
     -> update state.inventory.tools[name]
 ```
-
----
-
-## 3. Demo Scenario (`--demo`)
-
-```text
-main(["--demo"]) or python -m ... --demo
-  -> run_demo()
-    -> initialise_demo_manager()
-      -> StreetRaceManager.__init__()  # as in 2.1
-      -> seed crew + cars (same calls as option 1 + 2)
-    -> RaceManagementModule.create_race(...)
-    -> RaceManagementModule.select_driver_and_car(...)
-    -> RaceManagementModule.assign_driver_and_car(...)
-    -> RaceManagementModule.run_race(...)
-    -> MissionPlanningModule.create_mission(...)
-    -> MissionPlanningModule.assign_crew(...)
-    -> MissionPlanningModule.start_mission(...)
-    -> ReportingModule.generate_overview()
-```
-
-These call graphs now match exactly what a user can trigger from the
-CLI, either through the interactive menu or via the `--demo` flag.
