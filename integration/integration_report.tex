@@ -30,13 +30,17 @@ To strictly separate concerns and enhance realism, we designed and implemented t
 \end{itemize}
 
 \section{System Call Graph (2.1)}
-The hierarchical Call Graph maps the interaction bounds between the core modules. As modeled in the provided Mermaid diagram and the \texttt{CALL\_GRAPH.md} index:
-\begin{itemize}
-    \item Each node represents a distinct, single function mapped across the CLI or internal operations.
-    \item Directional arrows document explicit cross-module dependencies, for instance, \texttt{Race.select\_driver\_and\_car} directly calling \texttt{Crew.get\_available\_drivers}.
-    \item Inter-module calls safely execute shared state verification, guaranteeing that dependencies like checking for mechanic availability prior to starting a rescue mission explicitly navigate between the Mission and Maintenance boundaries.
-\end{itemize}
-\textit{(The fully-rendered graphical iteration of the hand-drawn Mermaid diagram charting these calls is submitted alongside this document.)}
+\begin{figure}[h!]
+    \centering
+    % Uncomment the line below and replace 'call_graph.jpeg' with your actual image filename
+    % \includegraphics[width=0.9\textwidth]{call_graph.jpeg}
+    
+    % This creates a placeholder box, remove this line when you uncomment the includegraphics
+    \framebox[\textwidth]{\rule{0pt}{10cm}\textbf{PLACEHOLDER: Insert Hand-Drawn Call Graph Image Here}}
+    
+    \caption{Hand-Drawn System Call Graph detailing intra and inter-module execution paths.}
+    \label{fig:call_graph}
+\end{figure}
 
 \section{Integration Test Design (2.2)}
 Our integration test suite (\texttt{test\_streetrace\_integration.py}) actively validates how these distinctly designed modules interact. We formalized integration hooks covering all 16 major internal workflows:
