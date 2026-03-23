@@ -10,7 +10,7 @@ This repository contains the complete implementation, testing suites, and analyt
 ### Prerequisites
 Ensure you have Python 3 installed. The black-box testing suite utilizes `pytest`, while the white-box and integration suites utilize Python's built-in `unittest` framework.
 ```bash
-pip install pytest coverage
+pip install pytest
 ```
 
 ### 1. Black-Box Testing
