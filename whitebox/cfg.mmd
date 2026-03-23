@@ -1,11 +1,10 @@
-```mermaid
 flowchart LR
     %% Base styling
     classDef core fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
     classDef module fill:#f1f8e9,stroke:#388e3c,stroke-width:2px,color:#000
     classDef io fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
 
-    %% Main Nodes (Exactly matching Class names)
+    %% Main Nodes (Standardized Class Names)
     Game[Game]
     UI[UI]
     Player[Player]
@@ -20,18 +19,21 @@ flowchart LR
     class Player,Dice,Board,Property,CardDeck,Bank module
 
     %% Bi-directional or direct interactions
-    Game -->|"[print_banner, interactive_menu]"| UI
-    UI -->|"[user inputs]"| Game
+    Game -->|"[print_banner, show_standings]"| UI
+    UI -->|"[confirm_choice, int_input]"| Game
     
     Game -->|"[roll]"| Dice
-    Game -->|"[move, deduct_money, bankrupt?]"| Player
+    Game -->|"[move, add/deduct money]"| Player
     Game -->|"[get_tile_type, get_property_at]"| Board
-    Game -->|"[draw_card]"| CardDeck
-    Game -->|"[check owner, check mortgage]"| Property
+    Game -->|"[draw, reshuffle]"| CardDeck
+    Game -->|"[price, owner, mortgage]"| Property
     Game -->|"[collect, pay_out, give_loan]"| Bank
 
-    %% Secondary paths branching out across the state
-    Board -->|"[returns Property object]"| Property
-    CardDeck -->|"[apply_card: add/deduct money]"| Player
-    CardDeck -->|"[apply_card: pay/collect money]"| Bank
-```
+    %% Secondary Architectural interactions
+    Board -->|"[instantiates and returns]"| Property
+    Bank -->|"[give_loan credits player]"| Player
+    Property -->|"[checks group ownership]"| Player
+    
+    %% Game logic resolving tiles via cards/properties
+    Game -.->|"[apply_card effects]"| Player
+    Game -.->|"[apply_card effects]"| Bank
