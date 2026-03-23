@@ -86,7 +86,34 @@ Our integration test suite (\texttt{test\_streetrace\_integration.py}) actively 
     \item \textbf{Errors/Logical Issues Found:} \textbf{Bug Encountered!} Testing confirmed the integration silently accepted the command and pointlessly deducted cash. The source logic in \texttt{maintenance.py} was refactored with an explicit `is not damaged` bailout logic clause resolving the financial drain.
 \end{itemize}
 
+\subsection{Test Scenario 6: Damaged Cars Mandating Mechanic Availability}
+\begin{itemize}
+    \item \textbf{Scenario Tested:} Attempting to start a mission that explicitly requires a \texttt{MECHANIC} while a damaged car exists in the inventory, but the assigned mechanic is either missing or flagged as unavailable.
+    \item \textbf{Modules Involved:} Mission Planning, Maintenance, Crew Management.
+    \item \textbf{Expected Result:} The Mission module interacts with Maintenance to check for damaged cars. Since one exists, it strictly mandates that an available mechanic must exist in the crew. If none is available, the mission start is aborted.
+    \item \textbf{Actual Result:} Evaluated across three vectors (no mechanic, unavailable mechanic, available mechanic). The mission accurately blocked starting until the mechanic was flagged \texttt{available=True}.
+    \item \textbf{Errors/Logical Issues Found:} Ensured that cross-dependencies correctly lazy-loaded Crew states to prevent circular import failures while perfectly enforcing the business rule specified in the assignment.
+\end{itemize}
+
+\subsection{Test Scenario 7: Race Rejection for Damaged Vehicles}
+\begin{itemize}
+    \item \textbf{Scenario Tested:} Attempting to securely assign a car that sustained damage in a prior race into a newly scheduled race.
+    \item \textbf{Modules Involved:} Race Management, Maintenance, Inventory.
+    \item \textbf{Expected Result:} Race Management validates the car against the Inventory state. Finding the \texttt{damaged} flag initialized by Maintenance, it aggressively rejects the assignment.
+    \item \textbf{Actual Result:} Successfully raised a \texttt{ValueError} preventing the damaged car from competing.
+    \item \textbf{Errors/Logical Issues Found:} Confirmed that car state mutation perfectly syncs between Maintenance fault logging and Race vehicle selection safely.
+\end{itemize}
+
+\subsection{Test Scenario 8: Repairing Vehicles Under Affordability Bounds}
+\begin{itemize}
+    \item \textbf{Scenario Tested:} Repairing a damaged car when the crew has an insufficient cash capital balance in the inventory.
+    \item \textbf{Modules Involved:} Maintenance, Inventory.
+    \item \textbf{Expected Result:} The Maintenance module attempts to bill the Inventory. Due to insufficient funds, it throws an error and crucially \textit{does not} mutate the car's damaged status.
+    \item \textbf{Actual Result:} Inventory rejected the deduction, and the subsequent test assertions verified the car safely remained \texttt{damaged=True} and \texttt{available=False}.
+    \item \textbf{Errors/Logical Issues Found:} Guarded against state-mutation race conditions where a car could be prematurely fixed before the cash was successfully deducted.
+\end{itemize}
+
 \section{Conclusion}
-The underlying modular structure flawlessly communicates through centralized, deterministic integrations. The exhaustive 5-vector integration testing ensures that financial deltas, vehicle statuses, and crew configurations mutate strictly through validated boundaries, fully satisfying DASS evaluation requirements.
+The underlying modular structure flawlessly communicates through centralized, deterministic integrations. The exhaustive 8-vector integration testing ensures that financial deltas, vehicle statuses, and crew configurations mutate strictly through validated boundaries, fully satisfying DASS evaluation requirements.
 
 \end{document}
