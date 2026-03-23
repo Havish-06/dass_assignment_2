@@ -1,1 +1,16 @@
 myenv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+.vscode/
+.idea/
+env/
+.venv/
+*.log
