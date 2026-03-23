@@ -8,7 +8,7 @@ This repository contains the complete implementation, testing suites, and analyt
 ## 🚀 How to Run the Code and Tests
 
 ### Prerequisites
-Ensure you have Python 3 installed. The black-box testing suite utilizes `pytest` and `requests`, while the white-box and integration suites utilize Python's built-in `unittest` framework.
+Ensure you have Python 3 installed. All testing suites strictly mandate the `pytest` framework as per assignment rules. The black-box suite also utilizes `requests` to transmit HTTP traffic.
 ```bash
 pip install pytest requests
 ```
@@ -28,10 +28,10 @@ The white-box assignment mathematically structures and asserts internal pathing 
 cd whitebox
 python3 -m moneypoly.main
 ```
-**Running the White-Box Unittests:**
+**Running the White-Box Tests:**
 ```bash
 cd whitebox
-python3 -m unittest discover -s tests -v
+python3 -m pytest tests/ -v
 ```
 
 ### 3. Integration Testing (StreetRace Manager)
@@ -44,7 +44,7 @@ python3 -m streetrace.cli
 **Running the Integration Test Suite:**
 ```bash
 cd integration
-python3 -m unittest discover -s tests -v
+python3 -m pytest tests/ -v
 ```
 
 ---
