@@ -5,9 +5,29 @@ flowchart TD
     classDef resolve fill:#f1f8e9,stroke:#8bc34a,stroke-width:2px,color:#000
     classDef property fill:#fff3e0,stroke:#ff9800,stroke-width:2px,color:#000
     classDef jail fill:#fce4ec,stroke:#e91e63,stroke-width:2px,color:#000
+    classDef endnode fill:#ffcdd2,stroke:#f44336,stroke-width:2px,color:#000
 
     %% Entry Point
-    START([Start Game Loop]) --> P1
+    START([Start Game]) --> R1
+
+    %% ----------------------------------------------------
+    %% Game.run (Main Loop & Win Condition)
+    %% ----------------------------------------------------
+    subgraph game_run [Game.run]
+        R1{turn_number < MAX_TURNS?}
+        R1 -- "Yes" --> R2{len(players) <= 1?}
+        
+        R2 -- "No (Multiple players left)" --> R3[Call play_turn]
+        R3 --> R4[Call ui.print_standings]
+        R4 --> R1
+        
+        R2 -- "Yes (One player left)" --> R5[Call find_winner]
+        R1 -- "No (Turn limit reached)" --> R5
+        
+        R5 --> REND([End Game: Print Winner])
+    end
+    class game_run mainLoop
+    class REND endnode
 
     %% ----------------------------------------------------
     %% Game.play_turn Subgraph
@@ -35,6 +55,9 @@ flowchart TD
     end
     class play_turn mainLoop
     
+    %% Implicit Call Mapping from run Loop to play_turn
+    R3 -.->|Calls| P1
+
     %% ----------------------------------------------------
     %% Game._move_and_resolve Subgraph
     %% ----------------------------------------------------
@@ -63,7 +86,7 @@ flowchart TD
     end
     class move_resolve resolve
     
-    %% Implicit Call Mappings (Connecting Subgraphs visually)
+    %% Implicit Call Mapping from play_turn to move
     P6 -.->|Calls| M1
 
     %% ----------------------------------------------------
@@ -76,7 +99,7 @@ flowchart TD
         H2 -- "Yes, Other Player" --> H3{Is Property Mortgaged?}
         
         H3 -- "Yes" --> HEND
-        H3 -- "No" --> H4[Call pay_rent]
+        H3 -- "No" --> H4[Call pay_rent & maybe bankrupt]
         H4 --> HEND
         
         H2 -- "No (Unowned)" --> H5[Prompt: Buy, Auction, Skip]
