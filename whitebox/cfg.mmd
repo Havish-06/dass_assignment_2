@@ -1,159 +1,61 @@
+```mermaid
 flowchart TD
-    %% Styling for better readability
-    classDef mainLoop fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px,color:#000
-    classDef resolve fill:#f1f8e9,stroke:#8bc34a,stroke-width:2px,color:#000
-    classDef property fill:#fff3e0,stroke:#ff9800,stroke-width:2px,color:#000
-    classDef jail fill:#fce4ec,stroke:#e91e63,stroke-width:2px,color:#000
-    classDef endnode fill:#ffcdd2,stroke:#f44336,stroke-width:2px,color:#000
+    %% Base styling
+    classDef engine fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef module fill:#f1f8e9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef io fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
 
-    %% Entry Point
-    START([Start Game]) --> R1
+    %% Main Nodes (One per File / Class)
+    Game((Game Engine))
+    UI[(UI / Interaction)]
+    Player[Player Module]
+    Dice[Dice Module]
+    Board[Board Module]
+    Property[Property Module]
+    CardDeck[Card / Deck Logic]
+    Bank[Bank Module]
 
-    %% ----------------------------------------------------
-    %% Game.run (Main Loop & Win Condition)
-    %% ----------------------------------------------------
-    subgraph game_run [Game.run]
-        R1{turn_number < MAX_TURNS?}
-        R1 -- "Yes" --> R2{len(players) <= 1?}
-        
-        R2 -- "No (Multiple players left)" --> R3[Call play_turn]
-        R3 --> R4[Call ui.print_standings]
-        R4 --> R1
-        
-        R2 -- "Yes (One player left)" --> R5[Call find_winner]
-        R1 -- "No (Turn limit reached)" --> R5
-        
-        R5 --> REND([End Game: Print Winner])
-    end
-    class game_run mainLoop
-    class REND endnode
+    class Game engine
+    class UI io
+    class Player,Dice,Board,Property,CardDeck,Bank module
 
-    %% ----------------------------------------------------
-    %% Game.play_turn Subgraph
-    %% ----------------------------------------------------
-    subgraph play_turn [Game.play_turn]
-        P1{Player in Jail?}
-        P1 -- "Yes" --> J1[Call _handle_jail_turn]
-        J1 --> P2[Call advance_turn]
-        
-        P1 -- "No" --> P3[Roll Dice: Update doubles_streak]
-        P3 --> P4{doubles_streak >= 3?}
-        
-        P4 -- "Yes" --> P5[Go to Jail, End Turn]
-        P5 --> P2
-        
-        P4 -- "No" --> P6[Call _move_and_resolve]
-        P6 --> P7{Dice Rolled Doubles?}
-        
-        P7 -- "Yes" --> P8[Keep current turn active]
-        P8 --> PEND([Return to Loop])
-
-        P7 -- "No" --> P9[Call advance_turn]
-        P9 --> PEND
-        P2 --> PEND
-    end
-    class play_turn mainLoop
+    %% Core Game Loop Initiation
+    Game -- "[print_banner, interactive_menu, display standings]" --> UI
     
-    %% Implicit Call Mapping from run Loop to play_turn
-    R3 -.->|Calls| P1
-
-    %% ----------------------------------------------------
-    %% Game._move_and_resolve Subgraph
-    %% ----------------------------------------------------
-    subgraph move_resolve [Game._move_and_resolve]
-        M1[Calculate new position board wrap] --> M2{Did Player Pass Go?}
-        M2 -- "Yes" --> M3[Award Go Salary]
-        M3 --> M4[Identify Tile Type at Position]
-        M2 -- "No" --> M4
-        
-        M4 --> M5{Switch on Tile Type}
-        M5 -- "go_to_jail" --> M6[Move directly to Jail]
-        M5 -- "income_tax" --> M7[Deduct up to balance]
-        M5 -- "luxury_tax" --> M8[Deduct up to balance]
-        M5 -- "chance / chest" --> M9[Draw Card & Apply Effect]
-        M5 -- "free_parking" --> M10[No operation]
-        M5 -- "property" --> M11[Call handle_property_tile]
-        
-        M6 --> M12[Call _check_bankruptcy]
-        M7 --> M12
-        M8 --> M12
-        M9 --> M12
-        M10 --> M12
-        M11 --> M12
-        
-        M12 --> MEND([Return to play_turn])
-    end
-    class move_resolve resolve
+    %% Pre-roll interactions
+    UI -- "[user inputs (trade, mortgage, skip)]" --> Game
     
-    %% Implicit Call Mapping from play_turn to move
-    P6 -.->|Calls| M1
+    %% Jail and Movement Logic
+    Game -- "[check in_jail status, jail turns]" --> Player
+    Player -- "[trigger jail release rules]" --> Game
 
-    %% ----------------------------------------------------
-    %% Game.handle_property_tile Subgraph
-    %% ----------------------------------------------------
-    subgraph handle_property [Game.handle_property_tile]
-        H1[Retrieve Property Object] --> H2{Property has Owner?}
-        
-        H2 -- "Yes, Current Player" --> HEND([Return])
-        H2 -- "Yes, Other Player" --> H3{Is Property Mortgaged?}
-        
-        H3 -- "Yes" --> HEND
-        H3 -- "No" --> H4[Call pay_rent & maybe bankrupt]
-        H4 --> HEND
-        
-        H2 -- "No (Unowned)" --> H5[Prompt: Buy, Auction, Skip]
-        H5 --> H6{Validate Input}
-        
-        H6 -- "Invalid Input" --> H7[Print Warning]
-        H7 --> H5
-        
-        H6 -- "Buy" --> H8[Call buy_property]
-        H6 -- "Auction" --> H9[Call auction_property]
-        H6 -- "Skip" --> H10[Do nothing]
-        
-        H8 --> HEND
-        H9 --> HEND
-        H10 --> HEND
-    end
-    class handle_property property
-
-    %% Linking _move_and_resolve to property logic
-    M11 -.->|Calls| H1
-
-    %% ----------------------------------------------------
-    %% Game._handle_jail_turn Subgraph
-    %% ----------------------------------------------------
-    subgraph handle_jail [Game._handle_jail_turn]
-        J2{Has 'Get Out of Jail' Card?}
-        J2 -- "Yes" --> J3[Prompt: Use Card?]
-        
-        J3 -- "Yes" --> J4[Discard Card, Set free, Roll normally]
-        J4 --> JEND([Return])
-        
-        J3 -- "No" --> J5
-        J2 -- "No" --> J5[Prompt: Pay $50 Fine?]
-        
-        J5 --> J6{User Input}
-        J6 -- "Pay" --> J7[Deduct $50]
-        J7 --> J8{Bankrupt?}
-        
-        J8 -- "Yes" --> JEND
-        J8 -- "No" --> J9[Set free, Roll normally]
-        J9 --> JEND
-        
-        J6 -- "Wait" --> J10[Increment jail_turns counter]
-        J10 --> J11{jail_turns == 3?}
-        
-        J11 -- "No" --> J12[Skip this turn completely]
-        J12 --> JEND
-        
-        J11 -- "Yes" --> J13[Force $50 Payment]
-        J13 --> J14{Bankrupt?}
-        J14 -- "Yes" --> JEND
-        J14 -- "No" --> J15[Set free, Roll normally]
-        J15 --> JEND
-    end
-    class handle_jail jail
-
-    %% Linking play_turn to Jail logic
-    J1 -.->|Calls| J2
+    Game -- "[roll()]" --> Dice
+    Dice -- "[return roll results, doubles streak]" --> Game
+    
+    Game -- "[move(steps), determine new position]" --> Player
+    
+    %% Evaluating Board State
+    Game -- "[get_tile_type(pos)]" --> Board
+    Board -- "[returns specific tile ID]" --> Game
+    
+    %% Conditional Branching across Modules based on Tile Types
+    Game -- "[if chance/chest: draw()]" --> CardDeck
+    CardDeck -- "[apply_card directly alters balance]" --> Player
+    CardDeck -- "[apply_card pays/collects]" --> Bank
+    
+    Game -- "[if property: get_property_at(pos)]" --> Board
+    Board -- "[returns Property object]" --> Property
+    
+    Game -- "[check owner, check mortgage_status]" --> Property
+    Property -- "[returns true/false logic]" --> Game
+    
+    %% Asset Resolution (Purchasing, Rent, Auction)
+    Game -- "[prompt: Buy/Auction/Skip]" --> UI
+    Game -- "[deduct_money($rent), add_property(prop)]" --> Player
+    Game -- "[collect(money), pay_out(money)]" --> Bank
+    Game -- "[set_owner(Player), set_mortgaged(bool)]" --> Property
+    
+    %% End of Turn Mechanics
+    Game -- "[check_bankruptcy(), is_bankrupt()]" --> Player
+    Player -- "[marks is_eliminated]" --> Game
+```
