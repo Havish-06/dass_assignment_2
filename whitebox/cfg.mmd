@@ -1,4 +1,3 @@
-```mermaid
 flowchart TD
     %% Styling for better readability
     classDef mainLoop fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px,color:#000
@@ -108,9 +107,9 @@ flowchart TD
         H6 -- "Invalid Input" --> H7[Print Warning]
         H7 --> H5
         
-        H6 -- "'b' (Buy)" --> H8[Call buy_property]
-        H6 -- "'a' (Auction)" --> H9[Call auction_property]
-        H6 -- "'s' (Skip)" --> H10[Do nothing]
+        H6 -- "Buy" --> H8[Call buy_property]
+        H6 -- "Auction" --> H9[Call auction_property]
+        H6 -- "Skip" --> H10[Do nothing]
         
         H8 --> HEND
         H9 --> HEND
@@ -128,21 +127,21 @@ flowchart TD
         J2{Has 'Get Out of Jail' Card?}
         J2 -- "Yes" --> J3[Prompt: Use Card?]
         
-        J3 -- "'y'" --> J4[Discard Card, Set free, Roll normally]
+        J3 -- "Yes" --> J4[Discard Card, Set free, Roll normally]
         J4 --> JEND([Return])
         
-        J3 -- "'n'" --> J5
+        J3 -- "No" --> J5
         J2 -- "No" --> J5[Prompt: Pay $50 Fine?]
         
         J5 --> J6{User Input}
-        J6 -- "'y' (Pay)" --> J7[Deduct $50]
+        J6 -- "Pay" --> J7[Deduct $50]
         J7 --> J8{Bankrupt?}
         
         J8 -- "Yes" --> JEND
         J8 -- "No" --> J9[Set free, Roll normally]
         J9 --> JEND
         
-        J6 -- "'n' (Wait)" --> J10[Increment jail_turns counter]
+        J6 -- "Wait" --> J10[Increment jail_turns counter]
         J10 --> J11{jail_turns == 3?}
         
         J11 -- "No" --> J12[Skip this turn completely]
@@ -158,4 +157,3 @@ flowchart TD
 
     %% Linking play_turn to Jail logic
     J1 -.->|Calls| J2
-```
