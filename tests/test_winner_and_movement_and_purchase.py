@@ -31,6 +31,14 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
         self.assertIsNotNone(winner)
         self.assertEqual(winner.name, "B")
 
+    def test_find_winner_with_no_players_returns_none(self):
+        """find_winner should return None cleanly when there are no players."""
+        empty_game = Game([])
+
+        winner = empty_game.find_winner()
+
+        self.assertIsNone(winner)
+
     def test_move_past_go_awards_salary(self):
         """Moving past position 0 should award the Go salary once."""
         # Place player near the end of the board so a big move wraps around.
@@ -43,6 +51,16 @@ class WinnerMovementAndPurchaseTests(unittest.TestCase):
 
         self.assertEqual(new_pos, 2)
         # Player should have received exactly one Go salary.
+        self.assertEqual(self.a.balance, starting_balance + GO_SALARY)
+
+    def test_move_lands_exactly_on_go_awards_salary(self):
+        """Landing exactly on Go should also award the Go salary once."""
+        self.a.position = BOARD_SIZE - 1
+        starting_balance = self.a.balance
+
+        new_pos = self.a.move(1)
+
+        self.assertEqual(new_pos, 0)
         self.assertEqual(self.a.balance, starting_balance + GO_SALARY)
 
     def test_can_buy_property_with_exact_balance(self):
